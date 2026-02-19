@@ -1,3 +1,8 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+using Marketplace.Slices.OrderSlice;
+using Marketplace.Database.Enums;
+
 namespace Marketplace.Api.Endpoints;
 
 public static class OrderEndpoints
@@ -6,64 +11,103 @@ public static class OrderEndpoints
     {
         var group = app.MapGroup("/api/orders").WithTags("Orders");
 
-        // Get user's orders
-        group.MapGet("/", () =>
+        group.MapGet("/", async (HttpContext context,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? status = null,
+            IOrderService orderService) =>
         {
-            // TODO: Implement order listing
-            return Results.Ok(new { data = Array.Empty<object>(), pagination = new { page = 1, pageSize = 20, totalCount = 0 } });
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var (orders, totalCount) = await orderService.GetMyOrdersAsync(userId.Value, page, pageSize, status);
+            return Results.Ok(new
+            {
+                data = orders,
+                pagination = new { page, pageSize, totalCount, totalPages = (int)Math.Ceiling(totalCount / (double)pageSize) }
+            });
         })
         .RequireAuthorization()
-        .WithName("GetUserOrders")
-        .WithSummary("Get current user's orders");
+        .WithName("GetUserOrders");
 
-        // Get order by ID
-        group.MapGet("/{id:guid}", (Guid id) =>
+        group.MapGet("/sales", async (HttpContext context,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? status = null,
+            IOrderService orderService) =>
         {
-            // TODO: Implement get order by ID
-            return Results.NotFound();
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var (orders, totalCount) = await orderService.GetMySalesAsync(userId.Value, page, pageSize, status);
+            return Results.Ok(new
+            {
+                data = orders,
+                pagination = new { page, pageSize, totalCount, totalPages = (int)Math.Ceiling(totalCount / (double)pageSize) }
+            });
         })
         .RequireAuthorization()
-        .WithName("GetOrderById")
-        .WithSummary("Get order by ID");
+        .WithName("GetUserSales");
 
-        // Create order
-        group.MapPost("/", () =>
+        group.MapGet("/{id:guid}", async (HttpContext context, Guid id, IOrderService orderService) =>
         {
-            // TODO: Implement create order
-            return Results.Created();
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var order = await orderService.GetByIdAsync(id, userId.Value);
+            return order != null ? Results.Ok(order) : Results.NotFound();
         })
         .RequireAuthorization()
-        .WithName("CreateOrder")
-        .WithSummary("Create a new order");
+        .WithName("GetOrderById");
 
-        // Update order status
-        group.MapPatch("/{id:guid}/status", (Guid id) =>
+        group.MapGet("/{id:guid}/items", async (HttpContext context, Guid id, IOrderService orderService) =>
         {
-            // TODO: Implement update order status
-            return Results.Ok();
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var items = await orderService.GetItemsAsync(id, userId.Value);
+            return Results.Ok(new { data = items });
         })
         .RequireAuthorization()
-        .WithName("UpdateOrderStatus")
-        .WithSummary("Update order status");
+        .WithName("GetOrderItems");
 
-        // Cancel order
-        group.MapPost("/{id:guid}/cancel", (Guid id) =>
+        group.MapPost("/", async (HttpContext context, [FromBody] CreateOrderDto dto, IOrderService orderService) =>
         {
-            // TODO: Implement cancel order
-            return Results.Ok();
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var id = await orderService.CreateAsync(dto, userId.Value);
+            return Results.Created($"/api/orders/{id}", new { id });
         })
         .RequireAuthorization()
-        .WithName("CancelOrder")
-        .WithSummary("Cancel an order");
+        .WithName("CreateOrder");
 
-        // Get order payments
-        group.MapGet("/{id:guid}/payments", (Guid id) =>
+        group.MapPatch("/{id:guid}/status", async (HttpContext context, Guid id,
+            [FromBody] UpdateOrderStatusRequest request, IOrderService orderService) =>
         {
-            // TODO: Implement get order payments
-            return Results.Ok(new { data = Array.Empty<object>() });
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            if (!Enum.TryParse<OrderStatus>(request.Status, true, out var status))
+                return Results.BadRequest(new { error = "Invalid status" });
+            var result = await orderService.UpdateStatusAsync(id, userId.Value, status, request.Notes);
+            return result ? Results.Ok(new { message = "Status updated" }) : Results.NotFound();
         })
         .RequireAuthorization()
-        .WithName("GetOrderPayments")
-        .WithSummary("Get payments for an order");
+        .WithName("UpdateOrderStatus");
+
+        group.MapPost("/{id:guid}/cancel", async (HttpContext context, Guid id,
+            [FromBody] CancelOrderRequest? request, IOrderService orderService) =>
+        {
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var result = await orderService.CancelAsync(id, userId.Value, request?.Reason);
+            return result ? Results.Ok(new { message = "Order cancelled" }) : Results.BadRequest(new { error = "Cannot cancel this order" });
+        })
+        .RequireAuthorization()
+        .WithName("CancelOrder");
+    }
+
+    private static Guid? GetUserId(HttpContext context)
+    {
+        var claim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return claim != null && Guid.TryParse(claim, out var id) ? id : null;
     }
 }
+
+public record UpdateOrderStatusRequest(string Status, string? Notes = null);
+public record CancelOrderRequest(string? Reason = null);

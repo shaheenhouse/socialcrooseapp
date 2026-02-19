@@ -146,6 +146,17 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Auto-migrate and seed database in development
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<MarketplaceDbContext>();
+    if (app.Environment.IsDevelopment())
+    {
+        await dbContext.Database.MigrateAsync();
+        await DatabaseSeeder.SeedAsync(dbContext);
+    }
+}
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -176,14 +187,38 @@ app.MapStoreEndpoints();
 app.MapProductEndpoints();
 app.MapOrderEndpoints();
 app.MapProjectEndpoints();
+app.MapReviewEndpoints();
+app.MapWalletEndpoints();
+app.MapNotificationEndpoints();
+app.MapCompanyEndpoints();
+app.MapSearchEndpoints();
+app.MapMessageEndpoints();
+app.MapFollowEndpoints();
+app.MapConnectionEndpoints();
 
 // Root endpoint
 app.MapGet("/", () => Results.Ok(new
 {
     Name = "Social Marketplace API",
-    Version = "1.0.0",
+    Version = "2.0.0",
     Status = "Running",
-    Documentation = "/swagger"
+    Documentation = "/swagger",
+    Features = new[]
+    {
+        "Authentication & Authorization",
+        "User & Profile Management",
+        "Marketplace (Stores, Products, Services)",
+        "Orders & Transactions",
+        "Projects & Freelancing",
+        "HR & Company Management",
+        "Reviews & Ratings",
+        "Wallet & Escrow",
+        "Real-time Messaging",
+        "Social Networking",
+        "LinkedIn-level Search",
+        "Notifications",
+        "Skills & Certifications"
+    }
 }));
 
 app.Run();

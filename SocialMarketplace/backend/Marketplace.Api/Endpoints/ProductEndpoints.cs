@@ -1,3 +1,7 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+using Marketplace.Slices.ProductSlice;
+
 namespace Marketplace.Api.Endpoints;
 
 public static class ProductEndpoints
@@ -6,70 +10,106 @@ public static class ProductEndpoints
     {
         var group = app.MapGroup("/api/products").WithTags("Products");
 
-        // Get all products
-        group.MapGet("/", () =>
+        group.MapGet("/", async (
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] Guid? category = null,
+            [FromQuery] Guid? store = null,
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null,
+            [FromQuery] string? sortBy = null,
+            IProductService productService) =>
         {
-            // TODO: Implement product listing
-            return Results.Ok(new { data = Array.Empty<object>(), pagination = new { page = 1, pageSize = 20, totalCount = 0 } });
+            var query = new ProductQueryParams
+            {
+                Page = page, PageSize = pageSize, Search = search,
+                CategoryId = category, StoreId = store,
+                MinPrice = minPrice, MaxPrice = maxPrice, SortBy = sortBy
+            };
+            var (products, totalCount) = await productService.GetAllAsync(query);
+            return Results.Ok(new
+            {
+                data = products,
+                pagination = new { page, pageSize, totalCount, totalPages = (int)Math.Ceiling(totalCount / (double)pageSize) }
+            });
         })
-        .WithName("GetAllProducts")
-        .WithSummary("Get all products with pagination and filters");
+        .WithName("GetAllProducts");
 
-        // Get product by ID
-        group.MapGet("/{id:guid}", (Guid id) =>
+        group.MapGet("/{id:guid}", async (Guid id, IProductService productService) =>
         {
-            // TODO: Implement get product by ID
-            return Results.NotFound();
+            var product = await productService.GetByIdAsync(id);
+            return product != null ? Results.Ok(product) : Results.NotFound();
         })
-        .WithName("GetProductById")
-        .WithSummary("Get product by ID");
+        .WithName("GetProductById");
 
-        // Get product by slug
-        group.MapGet("/slug/{slug}", (string slug) =>
+        group.MapGet("/slug/{slug}", async (string slug, IProductService productService) =>
         {
-            // TODO: Implement get product by slug
-            return Results.NotFound();
+            var product = await productService.GetBySlugAsync(slug);
+            return product != null ? Results.Ok(product) : Results.NotFound();
         })
-        .WithName("GetProductBySlug")
-        .WithSummary("Get product by slug");
+        .WithName("GetProductBySlug");
 
-        // Create product
-        group.MapPost("/", () =>
+        group.MapPost("/", async (HttpContext context, [FromBody] CreateProductRequest request, IProductService productService) =>
         {
-            // TODO: Implement create product
-            return Results.Created();
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var id = await productService.CreateAsync(request.Product, request.StoreId);
+            return Results.Created($"/api/products/{id}", new { id });
         })
         .RequireAuthorization()
-        .WithName("CreateProduct")
-        .WithSummary("Create a new product");
+        .WithName("CreateProduct");
 
-        // Update product
-        group.MapPatch("/{id:guid}", (Guid id) =>
+        group.MapPatch("/{id:guid}", async (HttpContext context, Guid id, [FromBody] UpdateProductDto dto, IProductService productService) =>
         {
-            // TODO: Implement update product
-            return Results.Ok();
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var result = await productService.UpdateAsync(id, dto);
+            return result ? Results.Ok(new { message = "Product updated" }) : Results.NotFound();
         })
         .RequireAuthorization()
-        .WithName("UpdateProduct")
-        .WithSummary("Update product");
+        .WithName("UpdateProduct");
 
-        // Delete product
-        group.MapDelete("/{id:guid}", (Guid id) =>
+        group.MapDelete("/{id:guid}", async (HttpContext context, Guid id, IProductService productService) =>
         {
-            // TODO: Implement delete product
-            return Results.NoContent();
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var result = await productService.DeleteAsync(id);
+            return result ? Results.NoContent() : Results.NotFound();
         })
         .RequireAuthorization()
-        .WithName("DeleteProduct")
-        .WithSummary("Delete product");
+        .WithName("DeleteProduct");
 
-        // Get product reviews
-        group.MapGet("/{id:guid}/reviews", (Guid id) =>
+        group.MapGet("/{id:guid}/images", async (Guid id, IProductService productService) =>
         {
-            // TODO: Implement get product reviews
-            return Results.Ok(new { data = Array.Empty<object>() });
+            var images = await productService.GetImagesAsync(id);
+            return Results.Ok(new { data = images });
         })
-        .WithName("GetProductReviews")
-        .WithSummary("Get reviews for a product");
+        .WithName("GetProductImages");
+
+        group.MapGet("/{id:guid}/variants", async (Guid id, IProductService productService) =>
+        {
+            var variants = await productService.GetVariantsAsync(id);
+            return Results.Ok(new { data = variants });
+        })
+        .WithName("GetProductVariants");
+
+        group.MapGet("/{id:guid}/reviews", async (Guid id,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            IProductService productService) =>
+        {
+            var reviews = await productService.GetReviewsAsync(id, page, pageSize);
+            return Results.Ok(new { data = reviews });
+        })
+        .WithName("GetProductReviews");
+    }
+
+    private static Guid? GetUserId(HttpContext context)
+    {
+        var claim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return claim != null && Guid.TryParse(claim, out var id) ? id : null;
     }
 }
+
+public record CreateProductRequest(Guid StoreId, CreateProductDto Product);
