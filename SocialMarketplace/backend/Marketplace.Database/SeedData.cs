@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Marketplace.Database.Entities;
 using Marketplace.Database.Entities.Social;
 using Marketplace.Database.Enums;
@@ -1976,5 +1977,251 @@ public static class DatabaseSeeder
         }
 
         return portfolios;
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  SUPER ADMIN SEEDER (Almas Khan)
+    // ═══════════════════════════════════════════════════
+    public static async Task SeedSuperAdminAsync(MarketplaceDbContext context)
+    {
+        const string superAdminEmail = "almaskhanwazir@gmail.com";
+
+        if (await context.Users.AnyAsync(u => u.Email == superAdminEmail))
+            return;
+
+        var now = DateTime.UtcNow;
+        var superAdminId = Guid.Parse("fe2281b8-3ff9-47cf-8046-fb44b4d20cd5");
+
+        // BCrypt hash of "admin123"
+        const string passwordHash = "$2a$11$pCktTQ9.Tp39KS.e96AebubtCcgy5.PNaM1Q3CKUXohSmcKH7gvpG";
+
+        // 1. User
+        var user = new User
+        {
+            Id = superAdminId,
+            Username = "almaskhanwazir",
+            Email = superAdminEmail,
+            PasswordHash = passwordHash,
+            FirstName = "Muhammad Almas",
+            LastName = "Khan",
+            PhoneNumber = "+923314846647",
+            AvatarUrl = "https://api.dicebear.com/7.x/avataaars/svg?seed=almaskhanwazir",
+            Bio = "Senior Software Engineer with 8+ years of hands-on experience architecting and delivering scalable cloud-native backends, data integration pipelines, microservices, and high-availability enterprise systems.",
+            Status = UserStatus.Active,
+            EmailVerified = true,
+            EmailVerifiedAt = now.AddDays(-90),
+            PhoneVerified = true,
+            PhoneVerifiedAt = now.AddDays(-90),
+            PreferredLanguage = "en",
+            TimeZone = "Asia/Karachi",
+            Currency = "PKR",
+            Country = "PK",
+            City = "Islamabad",
+            ReputationScore = 100,
+            AverageRating = 5.0m,
+            TotalReviews = 0,
+            IsVerifiedSeller = true,
+            IsVerifiedBuyer = true,
+            LastLoginAt = now,
+            CreatedAt = now.AddDays(-365),
+            IsDeleted = false,
+        };
+        context.Users.Add(user);
+
+        // 2. Assign ALL roles (super admin)
+        var allRoles = await context.Roles.ToListAsync();
+        foreach (var role in allRoles)
+        {
+            context.UserRoles.Add(new UserRole
+            {
+                Id = Guid.NewGuid(),
+                UserId = superAdminId,
+                RoleId = role.Id,
+                CreatedAt = now,
+                IsDeleted = false,
+            });
+        }
+
+        // 3. User Profile
+        context.UserProfiles.Add(new UserProfile
+        {
+            Id = Guid.NewGuid(),
+            UserId = superAdminId,
+            Headline = "Senior Software Engineer | Lead Engineer | Full Stack | .NET, Node.js, React, AWS, Azure",
+            About = "Senior Software Engineer with 8+ years of hands-on experience architecting and delivering scalable cloud-native backends, data integration pipelines, microservices, and high-availability enterprise systems. Expertise in .NET Core, Node.js, AWS & Azure cloud services, ETL processes, and AI integrations for real-time applications.",
+            HourlyRate = 75,
+            YearsOfExperience = 8,
+            CompletedProjects = 25,
+            AvailableForHire = true,
+            Website = null,
+            LinkedInUrl = "https://www.linkedin.com/in/almaskhanwazir/",
+            GitHubUrl = "https://github.com/almaskhanwazir",
+            PortfolioUrl = null,
+            CompanyName = "Ad Astra, Inc.",
+            Education = "B.S. Software Engineering, University of Science and Technology Bannu (3.57 GPA)",
+            Certifications = null,
+            IdVerified = true,
+            IdVerifiedAt = now.AddDays(-60),
+            CreatedAt = now,
+            IsDeleted = false,
+        });
+
+        // 4. Wallet
+        context.Wallets.Add(new Wallet
+        {
+            Id = Guid.NewGuid(),
+            UserId = superAdminId,
+            Balance = 0,
+            PendingBalance = 0,
+            HeldBalance = 0,
+            Currency = "PKR",
+            IsActive = true,
+            TotalEarned = 0,
+            TotalWithdrawn = 0,
+            TotalSpent = 0,
+            CreatedAt = now,
+            IsDeleted = false,
+        });
+
+        // 5. Portfolio with full data from JSON files
+        var personalInfo = new
+        {
+            fullName = "Muhammad Almas Khan",
+            title = "Senior Software Engineer",
+            email = superAdminEmail,
+            phone = "+923314846647",
+            whatsapp = "+923029473494",
+            location = "Islamabad, Pakistan",
+            bio = user.Bio,
+            profileImage = "",
+            socialLinks = new[]
+            {
+                new { id = "github", platform = "github", url = "https://github.com/almaskhanwazir" },
+                new { id = "linkedin", platform = "linkedin", url = "https://www.linkedin.com/in/almaskhanwazir/" }
+            }
+        };
+
+        var education = new[]
+        {
+            new
+            {
+                degree = "Bachelor of Science",
+                institution = "University of Science and Technology Bannu",
+                field = "Software Engineering",
+                startDate = "2014-10",
+                endDate = "2018-10",
+                current = false,
+                gpa = "3.57",
+                description = "FYP: University Online Clearance System - Created with .NET Core backend and Android app front end.",
+                id = "9c8c90d2-92bc-4696-8992-fbd236e6d5e1"
+            }
+        };
+
+        var experience = new object[]
+        {
+            new { title = "Lead Software Engineer", company = "Ad Astra, Inc.", location = "Islamabad, Pakistan", locationType = "remote", startDate = "2024-09", endDate = "", current = true,
+                description = "Led development of Adastra Connect (Appointments & Interpretation Super App): Architected a comprehensive platform for appointment scheduling, live AI interpretation, human interpretation escalation, finance/billing, invoicing, and operational analytics.",
+                technologies = new[] { "AWS Connect", "Lambda", "API Gateway", "RDS/Aurora", "S3", "EC2", "Kinesis", "Node.js", ".NET Core", "React", "WebRTC", "PostgreSQL", "MySQL" },
+                id = "fb3c8696-2b64-4820-a82c-31302688cba9" },
+            new { title = "Senior Software Engineer", company = "Ibex Global", location = "Islamabad, Pakistan", locationType = "hybrid", startDate = "2023-09", endDate = "2024-08", current = false,
+                description = "Designed and implemented scalable microservices for multi-tenant enterprise workflows using modern cloud technologies and best practices.",
+                technologies = new[] { ".NET Core", "Angular", "Node.js", "Serverless Framework", "AWS Lambda", "Azure Service Bus", "PostgreSQL", "SQL Server" },
+                id = "a1b2c3d4-5678-90ab-cdef-123456789001" },
+            new { title = "Software Engineer", company = "Systems Limited", location = "Islamabad, Pakistan", locationType = "onsite", startDate = "2021-09", endDate = "2023-09", current = false,
+                description = "Worked with various tools and frameworks including .NET Core, Azure Functions, Microsoft Dynamics 365, and Azure services. Delivered PartnerLinQ ETL functions for large-scale data mapping and transformations.",
+                technologies = new[] { ".NET Core", "MVC", "Azure Functions", "Microsoft Dynamics 365", "Azure DevOps", "Shopify APIs", "Blob Storage", "Active Directory", "BRE" },
+                id = "a1b2c3d4-5678-90ab-cdef-123456789002" },
+            new { title = "Software Engineer", company = "Innovative Solutions and Development", location = "Islamabad, Pakistan", locationType = "onsite", startDate = "2018-01", endDate = "2021-09", current = false,
+                description = "Full-stack development with React.js frontend and .NET backend. Implemented modern web development practices including Agile, Scrum, DevOps, and test automation.",
+                technologies = new[] { "React.js", ".NET", "MVC", "Shopify Liquid", "DevOps", "BDD Specflow", "Puppeteer", "Jest", "CI/CD" },
+                id = "a1b2c3d4-5678-90ab-cdef-123456789003" }
+        };
+
+        var skills = new object[]
+        {
+            new { name = ".NET Core", level = "expert", category = "Backend", id = "c89f953a-95a4-49c2-94f5-60fa227090f8" },
+            new { name = "C#", level = "expert", category = "Backend", id = "skill-csharp" },
+            new { name = "Node.js", level = "expert", category = "Backend", id = "96e85e4b-a9a5-43a2-9e62-fa09e810bc57" },
+            new { name = "React.js", level = "expert", category = "Frontend", id = "f9ca2020-1857-4d6d-9ea9-9367a4d7de49" },
+            new { name = "Next.js", level = "proficient", category = "Frontend", id = "3f0c59f2-a614-4215-ac68-4aeff3829c85" },
+            new { name = "Angular", level = "proficient", category = "Frontend", id = "skill-angular" },
+            new { name = "TypeScript", level = "expert", category = "Languages", id = "d402cb3b-97e4-4443-ad41-b7fff9db2e1f" },
+            new { name = "JavaScript", level = "expert", category = "Languages", id = "47a8afb3-63e5-4a76-84b2-e241a48dcdde" },
+            new { name = "Python", level = "intermediate", category = "Languages", id = "aeb5fd41-be73-405b-a3a6-54306b26efa1" },
+            new { name = "AWS Lambda", level = "expert", category = "Cloud & DevOps", id = "skill-lambda" },
+            new { name = "Azure Functions", level = "expert", category = "Cloud & DevOps", id = "skill-azfunc" },
+            new { name = "Docker", level = "proficient", category = "Cloud & DevOps", id = "f520e695-de9a-4555-9fb5-fd8f9feb1fb8" },
+            new { name = "PostgreSQL", level = "expert", category = "Databases", id = "skill-postgres" },
+            new { name = "SQL Server", level = "expert", category = "Databases", id = "skill-sqlserver" },
+            new { name = "MongoDB", level = "proficient", category = "Databases", id = "skill-mongodb" },
+            new { name = "Microservices", level = "expert", category = "Architecture", id = "skill-microservices" },
+            new { name = "Clean Architecture", level = "expert", category = "Architecture", id = "skill-clean" },
+            new { name = "REST APIs", level = "expert", category = "Architecture", id = "skill-rest" },
+            new { name = "SignalR", level = "proficient", category = "AI & Integrations", id = "skill-signalr" },
+            new { name = "TailwindCSS", level = "proficient", category = "Frontend", id = "skill-tailwind" },
+            new { name = "Shopify/Liquid", level = "proficient", category = "E-Commerce", id = "skill-shopify" },
+        };
+
+        var roles2 = new object[]
+        {
+            new { title = "Lead Software Engineer", level = "expert", id = "role-lead" },
+            new { title = "Full Stack Developer", level = "expert", id = "1a196df7-22db-4f6f-bb30-434f02fece58" },
+            new { title = "Software Architect", level = "expert", id = "78fe4d7c-3b25-4f31-a275-d526afe73252" },
+            new { title = "Backend Developer", level = "expert", id = "27667ded-2825-4d36-899c-7bff25d2cbe7" },
+            new { title = "Cloud Engineer", level = "proficient", id = "role-cloud" },
+        };
+
+        var projects = new object[]
+        {
+            new { name = "Adastra Connect", description = "Appointments & Interpretation Super App - Comprehensive platform for appointment scheduling, live AI interpretation, human interpretation escalation, finance/billing, invoicing, and operational analytics.", url = "https://ad-astrainc.com/", technologies = new[] { "AWS Connect", "Lambda", "Node.js", ".NET Core", "React", "WebRTC", "PostgreSQL" }, highlights = new[] { "Real-time appointment orchestration", "AI speech-to-text integration", "Billing & invoice engine", "40% latency improvement" }, startDate = "2024-09", endDate = "", id = "proj-adastra" },
+            new { name = "CableFinder", description = "End-to-end serviceability and quoting tool for cable providers.", url = "https://www.cablefinder.net/", technologies = new[] { "Angular", ".NET Core", "AWS Lambda", "PostgreSQL", "MongoDB" }, highlights = new[] { "Unified multi-provider systems", "Real-time quoting" }, startDate = "2023-01", endDate = "2024-08", id = "proj-cablefinder" },
+            new { name = "PartnerLinQ", description = "Enterprise supply chain connectivity platform delivering end-to-end visibility, control, and limitless flexibility.", url = "https://www.partnerlinq.com/", technologies = new[] { ".NET Core", "Azure Functions", "Microsoft Dynamics 365", "Azure DevOps" }, highlights = new[] { "Large-scale ETL pipelines", "Multi-format data transformations" }, startDate = "2021-09", endDate = "2023-09", id = "proj-partnerlinq" },
+            new { name = "Prodoo", description = "Online Recruitment service connecting companies with skilled freelancers worldwide.", url = "https://www.prodoo.com/", technologies = new[] { "React.js", "Next.js", "Redux", ".NET Web APIs", "Azure Cloud" }, highlights = new[] { "Freelancer-recruiter matching", "Collaboration workflows" }, startDate = "2020-01", endDate = "2021-06", id = "proj-prodoo" },
+        };
+
+        var languages = new[]
+        {
+            new { language = "English", proficiency = "Professional", id = "lang-en" },
+            new { language = "Urdu", proficiency = "Native", id = "lang-ur" },
+            new { language = "Pashto", proficiency = "Native", id = "lang-ps" },
+        };
+
+        var jsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+        context.Portfolios.Add(new Portfolio
+        {
+            Id = Guid.Parse("baa07431-fa2c-45dd-ab34-c11b9432b86e"),
+            UserId = superAdminId,
+            Slug = "almaskhanwazir",
+            IsPublic = true,
+            Theme = "dark",
+            PersonalInfo = JsonSerializer.Serialize(personalInfo, jsonOpts),
+            Education = JsonSerializer.Serialize(education, jsonOpts),
+            Experience = JsonSerializer.Serialize(experience, jsonOpts),
+            Skills = JsonSerializer.Serialize(skills, jsonOpts),
+            Roles = JsonSerializer.Serialize(roles2, jsonOpts),
+            Certifications = "[]",
+            Projects = JsonSerializer.Serialize(projects, jsonOpts),
+            Achievements = "[]",
+            Languages = JsonSerializer.Serialize(languages, jsonOpts),
+            Resumes = """[{"id":"1","name":"My Resume (Profile)","templateId":"minimal","isActive":true,"isStandard":true,"createdAt":"2026-02-05T00:00:00Z","updatedAt":"2026-02-05T00:00:00Z"}]""",
+            CreatedAt = now,
+            IsDeleted = false,
+        });
+
+        // 6. Notifications - welcome
+        context.Notifications.Add(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = superAdminId,
+            Type = NotificationType.System,
+            Title = "Welcome, Super Admin!",
+            Message = "Your super admin account has been created. You have full access to all platform features.",
+            IsRead = false,
+            CreatedAt = now,
+            IsDeleted = false,
+        });
+
+        await context.SaveChangesAsync();
     }
 }

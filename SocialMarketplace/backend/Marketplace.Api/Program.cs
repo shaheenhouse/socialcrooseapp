@@ -231,7 +231,14 @@ app.MapGet("/", () => Results.Ok(new
 app.MapPost("/api/admin/seed", async (MarketplaceDbContext db) =>
 {
     await DatabaseSeeder.SeedAsync(db);
+    await DatabaseSeeder.SeedSuperAdminAsync(db);
     return Results.Ok(new { message = "Database seeded successfully" });
+}).WithTags("Admin");
+
+app.MapPost("/api/admin/seed-superadmin", async (MarketplaceDbContext db) =>
+{
+    await DatabaseSeeder.SeedSuperAdminAsync(db);
+    return Results.Ok(new { message = "Super admin seeded successfully" });
 }).WithTags("Admin");
 
 app.Run();
