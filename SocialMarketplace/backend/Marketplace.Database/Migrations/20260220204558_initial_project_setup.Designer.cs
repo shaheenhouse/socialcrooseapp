@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Marketplace.Database.Migrations
 {
     [DbContext(typeof(MarketplaceDbContext))]
-    [Migration("20260220195845_initial_project_setup")]
+    [Migration("20260220204558_initial_project_setup")]
     partial class initial_project_setup
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace Marketplace.Database.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
