@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Marketplace.Database.Entities;
+using Marketplace.Database.Entities.Social;
 
 namespace Marketplace.Database;
 
@@ -118,6 +119,28 @@ public class MarketplaceDbContext : DbContext
     public DbSet<Portfolio> Portfolios => Set<Portfolio>();
     public DbSet<Resume> Resumes => Set<Resume>();
     public DbSet<Design> Designs => Set<Design>();
+
+    // Social
+    public DbSet<Post> Posts => Set<Post>();
+    public DbSet<PostReaction> PostReactions => Set<PostReaction>();
+    public DbSet<Connection> Connections => Set<Connection>();
+    public DbSet<Follow> Follows => Set<Follow>();
+    public DbSet<SearchHistory> SearchHistories => Set<SearchHistory>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<Message> Messages => Set<Message>();
+    public DbSet<Page> Pages => Set<Page>();
+
+    // Khata / Ledger
+    public DbSet<KhataParty> KhataParties => Set<KhataParty>();
+    public DbSet<KhataEntry> KhataEntries => Set<KhataEntry>();
+
+    // Invoicing
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+
+    // Inventory
+    public DbSet<InventoryItem> InventoryItems => Set<InventoryItem>();
+    public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
 
     // Audit & Outbox
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();

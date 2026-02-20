@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Marketplace.Core.Infrastructure;
 using Marketplace.Core.Caching;
 using Marketplace.Core.Performance;
@@ -14,10 +15,27 @@ public static class ServiceCollectionExtensions
         // Connection Factory
         services.AddSingleton<IConnectionFactory, ConnectionFactory>();
 
-        // Redis
+        // Redis (optional - gracefully degrades without it)
         var redisConnection = configuration.GetConnectionString("Redis") ?? "localhost:6379";
         services.AddSingleton<IConnectionMultiplexer>(sp =>
-            ConnectionMultiplexer.Connect(redisConnection));
+        {
+            var logger = sp.GetRequiredService<ILogger<RedisJobQueue>>();
+            try
+            {
+                var options = ConfigurationOptions.Parse(redisConnection);
+                options.AbortOnConnectFail = false;
+                options.ConnectTimeout = 3000;
+                options.SyncTimeout = 2000;
+                return ConnectionMultiplexer.Connect(options);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Redis not available — running without distributed cache/queues");
+                var options = ConfigurationOptions.Parse(redisConnection);
+                options.AbortOnConnectFail = false;
+                return ConnectionMultiplexer.Connect(options);
+            }
+        });
 
         // Caching
         services.AddMemoryCache();

@@ -9,6 +9,8 @@ using Serilog;
 using Marketplace.Core;
 using Marketplace.Database;
 using Marketplace.Slices;
+using Marketplace.Realtime;
+using Marketplace.Realtime.Hubs;
 using Marketplace.Api.Endpoints;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -119,23 +121,20 @@ builder.Services.AddOpenTelemetry()
             .AddMeter("Marketplace.Core");
     });
 
-// Health checks
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection") ?? "", name: "database")
-    .AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379", name: "redis");
+// SignalR Real-time services
+var redisConn = builder.Configuration.GetConnectionString("Redis");
+builder.Services.AddRealtimeServices(redisConn);
+
+// Health checks (Redis is optional)
+var healthChecks = builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection") ?? "", name: "database");
+
+if (!string.IsNullOrWhiteSpace(redisConn))
+{
+    healthChecks.AddRedis(redisConn, name: "redis");
+}
 
 var app = builder.Build();
-
-// Auto-migrate and seed database in development
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<MarketplaceDbContext>();
-    if (app.Environment.IsDevelopment())
-    {
-        await dbContext.Database.MigrateAsync();
-        await DatabaseSeeder.SeedAsync(dbContext);
-    }
-}
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
@@ -179,6 +178,18 @@ app.MapPortfolioEndpoints();
 app.MapResumeEndpoints();
 app.MapDesignEndpoints();
 app.MapKhataEndpoints();
+app.MapPostEndpoints();
+app.MapCartEndpoints();
+app.MapWishlistEndpoints();
+app.MapDiscountEndpoints();
+app.MapTenderEndpoints();
+app.MapInventoryEndpoints();
+app.MapInvoiceEndpoints();
+
+// SignalR Hubs
+app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<PresenceHub>("/hubs/presence");
 
 // Root endpoint
 app.MapGet("/", () => Results.Ok(new

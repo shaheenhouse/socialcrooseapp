@@ -559,6 +559,41 @@ export const tenderApi = {
     api.get('/tenders/my-bids', { params }),
 };
 
+// Cart API
+export const cartApi = {
+  get: () => api.get('/cart'),
+  addItem: (data: { productId: string; quantity: number }) =>
+    api.post('/cart/items', data),
+  updateItem: (itemId: string, quantity: number) =>
+    api.patch(`/cart/items/${itemId}`, { quantity }),
+  removeItem: (itemId: string) => api.delete(`/cart/items/${itemId}`),
+  clear: () => api.delete('/cart'),
+};
+
+// Wishlist API
+export const wishlistApi = {
+  getAll: () => api.get('/wishlist'),
+  create: (name: string) => api.post('/wishlist', { name }),
+  addItem: (wishlistId: string, data: { productId?: string; serviceId?: string }) =>
+    api.post(`/wishlist/${wishlistId}/items`, data),
+  removeItem: (wishlistId: string, itemId: string) =>
+    api.delete(`/wishlist/${wishlistId}/items/${itemId}`),
+  delete: (id: string) => api.delete(`/wishlist/${id}`),
+};
+
+// Discount API
+export const discountApi = {
+  getAll: (params?: { page?: number; pageSize?: number }) =>
+    api.get('/discounts', { params }),
+  getById: (id: string) => api.get(`/discounts/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/discounts', data),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/discounts/${id}`, data),
+  delete: (id: string) => api.delete(`/discounts/${id}`),
+  validate: (code: string, orderAmount: number) =>
+    api.post('/discounts/validate', { code, orderAmount }),
+};
+
 // Analytics API
 export const analyticsApi = {
   getDashboard: (params?: { from?: string; to?: string }) =>

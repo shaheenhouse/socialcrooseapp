@@ -35,6 +35,8 @@ export default function FeedPage() {
   const queryClient = useQueryClient();
   const [postContent, setPostContent] = useState('');
   const [showReactions, setShowReactions] = useState<string | null>(null);
+  const [commentingOn, setCommentingOn] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState('');
 
   const { data: feedData, isLoading } = useQuery({
     queryKey: ['feed'],
@@ -58,6 +60,16 @@ export default function FeedPage() {
     mutationFn: ({ postId, type }: { postId: string; type: string }) =>
       postApi.react(postId, type),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed'] }),
+  });
+
+  const addComment = useMutation({
+    mutationFn: ({ postId, content }: { postId: string; content: string }) =>
+      postApi.addComment(postId, { content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      setCommentText('');
+      setCommentingOn(null);
+    },
   });
 
   const posts = feedData?.data?.items ?? feedData?.data ?? [];
@@ -244,7 +256,10 @@ export default function FeedPage() {
                       )}
                     </AnimatePresence>
                   </div>
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                  <Button
+                    variant="ghost" size="sm" className="gap-1.5 text-muted-foreground"
+                    onClick={() => setCommentingOn(commentingOn === post.id ? null : post.id)}
+                  >
                     <MessageCircle className="h-4 w-4" /> Comment
                   </Button>
                   <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
@@ -254,6 +269,46 @@ export default function FeedPage() {
                     <Bookmark className="h-4 w-4" /> Save
                   </Button>
                 </div>
+
+                {/* Inline Comment Box */}
+                <AnimatePresence>
+                  {commentingOn === post.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <Separator className="mb-3" />
+                      <div className="flex gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user?.avatarUrl} />
+                          <AvatarFallback className="text-xs">
+                            {user?.firstName?.[0]}{user?.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Input
+                          placeholder="Write a comment..."
+                          value={commentingOn === post.id ? commentText : ''}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && commentText.trim()) {
+                              addComment.mutate({ postId: post.id, content: commentText });
+                            }
+                          }}
+                          className="flex-1 h-9 text-sm"
+                        />
+                        <Button
+                          size="sm" className="h-9"
+                          disabled={!commentText.trim() || addComment.isPending}
+                          onClick={() => addComment.mutate({ postId: post.id, content: commentText })}
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </CardContent>
             </Card>
           </motion.div>

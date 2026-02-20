@@ -35,6 +35,9 @@ import {
   Receipt,
   Package,
   ScrollText,
+  ShoppingCart,
+  Heart,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +59,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { Badge } from "@/components/ui/badge";
 import { SearchTrigger } from "@/components/global-search";
 import { useNotificationStore } from "@/store/notification-store";
+import { SignalRProvider } from "@/components/signalr-provider";
 
 interface NavSection {
   title: string;
@@ -88,6 +92,14 @@ const navSections: NavSection[] = [
       { name: "Orders", href: "/dashboard/orders", icon: CreditCard },
       { name: "Invoices", href: "/dashboard/invoices", icon: Receipt },
       { name: "Khata / Ledger", href: "/dashboard/khata", icon: BookOpen },
+      { name: "Discounts", href: "/dashboard/discounts", icon: Tag },
+    ],
+  },
+  {
+    title: "Shopping",
+    items: [
+      { name: "Cart", href: "/dashboard/cart", icon: ShoppingCart },
+      { name: "Wishlist", href: "/dashboard/wishlist", icon: Heart },
     ],
   },
   {
@@ -215,6 +227,7 @@ export default function DashboardLayout({
   if (!mounted) return null;
 
   return (
+    <SignalRProvider>
     <TooltipProvider>
       <div className="min-h-screen bg-background">
         {/* Mobile overlay */}
@@ -427,5 +440,6 @@ export default function DashboardLayout({
         </div>
       </div>
     </TooltipProvider>
+    </SignalRProvider>
   );
 }
