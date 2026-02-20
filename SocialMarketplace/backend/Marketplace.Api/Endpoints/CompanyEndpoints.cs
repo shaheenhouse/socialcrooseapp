@@ -11,11 +11,11 @@ public static class CompanyEndpoints
         var group = app.MapGroup("/api/companies").WithTags("Companies");
 
         group.MapGet("/", async (
+            ICompanyService companyService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
-            [FromQuery] string? industry = null,
-            ICompanyService companyService) =>
+            [FromQuery] string? industry = null) =>
         {
             var (companies, totalCount) = await companyService.GetAllAsync(page, pageSize, search, industry);
             return Results.Ok(new

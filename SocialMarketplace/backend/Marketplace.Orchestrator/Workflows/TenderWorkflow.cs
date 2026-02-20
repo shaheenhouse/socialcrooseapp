@@ -67,7 +67,7 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
             Type = "tender",
             Id = input.TenderId,
             Action = "index"
-        }, ct);
+        });
 
         // Notify eligible vendors
         await _jobQueue.EnqueueAsync("notifications", new
@@ -75,7 +75,7 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
             Type = "new_tender",
             TenderId = input.TenderId,
             Category = input.Category
-        }, ct);
+        });
 
         // Schedule deadline reminders
         await _jobQueue.EnqueueAsync("scheduled-tasks", new
@@ -83,7 +83,7 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
             Type = "tender_deadline_reminder",
             TenderId = input.TenderId,
             Deadline = input.SubmissionDeadline
-        }, ct);
+        });
     }
 
     private async Task HandleBidSubmissionAsync(TenderWorkflowInput input, CancellationToken ct)
@@ -94,7 +94,7 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
             Type = "tender_bid",
             BidId = input.BidId,
             TenderId = input.TenderId
-        }, ct);
+        });
 
         // Acknowledge receipt
         await _jobQueue.EnqueueAsync("notifications", new
@@ -103,7 +103,7 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
             UserId = input.BidderId,
             TenderId = input.TenderId,
             BidId = input.BidId
-        }, ct);
+        });
     }
 
     private async Task HandleClosingSubmissionsAsync(TenderWorkflowInput input, CancellationToken ct)
@@ -113,14 +113,14 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
         {
             Type = "tender_closed",
             TenderId = input.TenderId
-        }, ct);
+        });
 
         // Generate bid summary for evaluation
         await _jobQueue.EnqueueAsync("reports", new
         {
             Type = "tender_bid_summary",
             TenderId = input.TenderId
-        }, ct);
+        });
     }
 
     private async Task HandleEvaluationAsync(TenderWorkflowInput input, CancellationToken ct)
@@ -130,7 +130,7 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
         {
             TenderId = input.TenderId,
             EvaluationCriteria = input.EvaluationCriteria
-        }, ct);
+        });
     }
 
     private async Task HandleContractAwardAsync(TenderWorkflowInput input, CancellationToken ct)
@@ -141,7 +141,7 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
             Type = "contract_awarded",
             UserId = input.WinnerId,
             TenderId = input.TenderId
-        }, ct);
+        });
 
         // Notify other bidders
         await _jobQueue.EnqueueAsync("notifications", new
@@ -149,7 +149,7 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
             Type = "tender_awarded",
             TenderId = input.TenderId,
             ExcludeUserId = input.WinnerId
-        }, ct);
+        });
 
         // Create contract
         await _jobQueue.EnqueueAsync("contracts", new
@@ -158,14 +158,14 @@ public class TenderWorkflow : IWorkflow<TenderWorkflowInput, TenderWorkflowResul
             TenderId = input.TenderId,
             VendorId = input.WinnerId,
             Amount = input.ContractAmount
-        }, ct);
+        });
 
         // Publish award notice
         await _jobQueue.EnqueueAsync("public-notices", new
         {
             Type = "contract_award",
             TenderId = input.TenderId
-        }, ct);
+        });
     }
 }
 

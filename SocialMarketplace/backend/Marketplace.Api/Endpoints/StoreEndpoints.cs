@@ -11,11 +11,11 @@ public static class StoreEndpoints
         var group = app.MapGroup("/api/stores").WithTags("Stores");
 
         group.MapGet("/", async (
+            IStoreService storeService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
-            [FromQuery] string? status = null,
-            IStoreService storeService) =>
+            [FromQuery] string? status = null) =>
         {
             var (stores, totalCount) = await storeService.GetAllAsync(page, pageSize, search, status);
             return Results.Ok(new
@@ -79,9 +79,9 @@ public static class StoreEndpoints
         .WithName("UpdateStore");
 
         group.MapGet("/{id:guid}/products", async (Guid id,
+            Slices.ProductSlice.IProductService productService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            Slices.ProductSlice.IProductService productService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var products = await productService.GetByStoreIdAsync(id, page, pageSize);
             return Results.Ok(new { data = products });

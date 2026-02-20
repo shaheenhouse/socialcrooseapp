@@ -85,7 +85,7 @@ public sealed class RedisJobQueue : IJobQueue
                 return null;
             }
 
-            return JsonSerializer.Deserialize<T>(payload!, _jsonOptions);
+            return JsonSerializer.Deserialize<T>((string)payload!, _jsonOptions);
         }
         catch (Exception ex)
         {

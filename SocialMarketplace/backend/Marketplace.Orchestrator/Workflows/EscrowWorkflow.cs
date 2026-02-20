@@ -74,7 +74,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             UserId = input.BuyerId,
             EscrowId = input.EscrowId,
             Amount = input.Amount
-        }, ct);
+        });
     }
 
     private async Task HandleEscrowFundingAsync(EscrowWorkflowInput input, CancellationToken ct)
@@ -86,7 +86,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             UserId = input.BuyerId,
             Amount = input.Amount,
             EscrowId = input.EscrowId
-        }, ct);
+        });
 
         // Notify seller
         await _jobQueue.EnqueueAsync("notifications", new
@@ -95,7 +95,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             UserId = input.SellerId,
             EscrowId = input.EscrowId,
             Amount = input.Amount
-        }, ct);
+        });
 
         // Notify buyer
         await _jobQueue.EnqueueAsync("notifications", new
@@ -104,7 +104,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             UserId = input.BuyerId,
             EscrowId = input.EscrowId,
             Amount = input.Amount
-        }, ct);
+        });
     }
 
     private async Task HandleMilestoneReleaseAsync(EscrowWorkflowInput input, CancellationToken ct)
@@ -121,7 +121,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             Amount = sellerAmount,
             EscrowId = input.EscrowId,
             MilestoneId = input.MilestoneId
-        }, ct);
+        });
 
         // Notify seller
         await _jobQueue.EnqueueAsync("notifications", new
@@ -130,7 +130,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             UserId = input.SellerId,
             Amount = sellerAmount,
             MilestoneId = input.MilestoneId
-        }, ct);
+        });
 
         // Notify buyer
         await _jobQueue.EnqueueAsync("notifications", new
@@ -138,7 +138,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             Type = "milestone_approved",
             UserId = input.BuyerId,
             MilestoneId = input.MilestoneId
-        }, ct);
+        });
     }
 
     private async Task HandleFullReleaseAsync(EscrowWorkflowInput input, CancellationToken ct)
@@ -154,7 +154,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             UserId = input.SellerId,
             Amount = sellerAmount,
             EscrowId = input.EscrowId
-        }, ct);
+        });
 
         // Notify both parties
         await _jobQueue.EnqueueAsync("notifications", new
@@ -162,7 +162,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             Type = "escrow_released",
             UserIds = new[] { input.BuyerId, input.SellerId },
             EscrowId = input.EscrowId
-        }, ct);
+        });
 
         // Update transaction records
         await _jobQueue.EnqueueAsync("accounting", new
@@ -171,7 +171,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             EscrowId = input.EscrowId,
             PlatformFee = platformFee,
             SellerAmount = sellerAmount
-        }, ct);
+        });
     }
 
     private async Task HandleRefundAsync(EscrowWorkflowInput input, CancellationToken ct)
@@ -184,7 +184,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             Amount = input.RefundAmount ?? input.Amount,
             EscrowId = input.EscrowId,
             Reason = input.RefundReason
-        }, ct);
+        });
 
         // Notify buyer
         await _jobQueue.EnqueueAsync("notifications", new
@@ -193,7 +193,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             UserId = input.BuyerId,
             Amount = input.RefundAmount ?? input.Amount,
             EscrowId = input.EscrowId
-        }, ct);
+        });
 
         // Notify seller
         await _jobQueue.EnqueueAsync("notifications", new
@@ -202,7 +202,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             UserId = input.SellerId,
             EscrowId = input.EscrowId,
             Reason = input.RefundReason
-        }, ct);
+        });
     }
 
     private async Task HandleDisputeAsync(EscrowWorkflowInput input, CancellationToken ct)
@@ -214,7 +214,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             EscrowId = input.EscrowId,
             InitiatorId = input.DisputeInitiatorId,
             Reason = input.DisputeReason
-        }, ct);
+        });
 
         // Freeze escrow
         _logger.LogInformation("Freezing escrow {EscrowId} due to dispute", input.EscrowId);
@@ -225,7 +225,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             Type = "dispute_opened",
             UserIds = new[] { input.BuyerId, input.SellerId },
             EscrowId = input.EscrowId
-        }, ct);
+        });
 
         // Notify support team
         await _jobQueue.EnqueueAsync("support-tickets", new
@@ -233,7 +233,7 @@ public class EscrowWorkflow : IWorkflow<EscrowWorkflowInput, EscrowWorkflowResul
             Type = "dispute",
             EscrowId = input.EscrowId,
             Priority = "high"
-        }, ct);
+        });
     }
 }
 

@@ -98,7 +98,7 @@ public class NotificationWorkflow : IWorkflow<NotificationWorkflowInput, Notific
             Body = input.Body,
             Data = input.Data,
             ActionUrl = input.ActionUrl
-        }, ct);
+        });
     }
 
     private async Task SendEmailNotificationAsync(NotificationWorkflowInput input, CancellationToken ct)
@@ -109,7 +109,7 @@ public class NotificationWorkflow : IWorkflow<NotificationWorkflowInput, Notific
             Subject = input.Title,
             Template = input.EmailTemplate,
             Data = input.Data
-        }, ct);
+        });
     }
 
     private async Task SendPushNotificationAsync(NotificationWorkflowInput input, CancellationToken ct)
@@ -120,7 +120,7 @@ public class NotificationWorkflow : IWorkflow<NotificationWorkflowInput, Notific
             Title = input.Title,
             Body = input.Body,
             Data = input.Data
-        }, ct);
+        });
     }
 
     private async Task SendSmsNotificationAsync(NotificationWorkflowInput input, CancellationToken ct)
@@ -129,7 +129,7 @@ public class NotificationWorkflow : IWorkflow<NotificationWorkflowInput, Notific
         {
             Phone = input.Phone,
             Message = input.SmsMessage ?? input.Body
-        }, ct);
+        });
     }
 
     private async Task SendRealtimeNotificationAsync(NotificationWorkflowInput input, CancellationToken ct)
@@ -146,7 +146,7 @@ public class NotificationWorkflow : IWorkflow<NotificationWorkflowInput, Notific
                 Data = input.Data,
                 Timestamp = DateTime.UtcNow
             }
-        }, ct);
+        });
     }
 }
 

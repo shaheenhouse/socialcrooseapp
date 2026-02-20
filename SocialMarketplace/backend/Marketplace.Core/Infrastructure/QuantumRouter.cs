@@ -9,7 +9,7 @@ public sealed class QuantumRouter : IQuantumRouter
     private readonly ILogger<QuantumRouter> _logger;
     private readonly double _loadFactorThreshold;
     private readonly Random _random = new();
-    private volatile double _currentLoadFactor;
+    private double _currentLoadFactor;
     private long _fastPathSuccesses;
     private long _fastPathFailures;
     private long _totalRequests;

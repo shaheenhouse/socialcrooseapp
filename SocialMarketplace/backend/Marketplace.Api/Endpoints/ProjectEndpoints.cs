@@ -11,14 +11,14 @@ public static class ProjectEndpoints
         var group = app.MapGroup("/api/projects").WithTags("Projects");
 
         group.MapGet("/", async (
+            IProjectService projectService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
             [FromQuery] string? status = null,
             [FromQuery] Guid? category = null,
             [FromQuery] decimal? minBudget = null,
-            [FromQuery] decimal? maxBudget = null,
-            IProjectService projectService) =>
+            [FromQuery] decimal? maxBudget = null) =>
         {
             var query = new ProjectQueryParams
             {
@@ -35,9 +35,9 @@ public static class ProjectEndpoints
         .WithName("GetAllProjects");
 
         group.MapGet("/my", async (HttpContext context,
+            IProjectService projectService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            IProjectService projectService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -79,9 +79,9 @@ public static class ProjectEndpoints
         .WithName("UpdateProject");
 
         group.MapGet("/{id:guid}/bids", async (Guid id,
+            IProjectService projectService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            IProjectService projectService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var bids = await projectService.GetBidsAsync(id, page, pageSize);
             return Results.Ok(new { data = bids });

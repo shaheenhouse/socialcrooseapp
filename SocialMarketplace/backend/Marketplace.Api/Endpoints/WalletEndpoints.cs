@@ -20,10 +20,10 @@ public static class WalletEndpoints
         .WithName("GetMyWallet");
 
         group.MapGet("/transactions", async (HttpContext context,
+            IWalletService walletService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] string? type = null,
-            IWalletService walletService) =>
+            [FromQuery] string? type = null) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -37,9 +37,9 @@ public static class WalletEndpoints
         .WithName("GetWalletTransactions");
 
         group.MapGet("/escrows", async (HttpContext context,
+            IWalletService walletService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            IWalletService walletService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();

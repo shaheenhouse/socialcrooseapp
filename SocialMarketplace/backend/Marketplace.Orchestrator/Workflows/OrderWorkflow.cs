@@ -90,7 +90,7 @@ public class OrderWorkflow : IWorkflow<OrderWorkflowInput, OrderWorkflowResult>
             OrderId = input.OrderId,
             Amount = input.Amount,
             BuyerId = input.BuyerId
-        }, ct);
+        });
         context.CompletedSteps.Add("ProcessPayment");
     }
 
@@ -102,7 +102,7 @@ public class OrderWorkflow : IWorkflow<OrderWorkflowInput, OrderWorkflowResult>
             Type = "new_order",
             UserId = input.SellerId,
             OrderId = input.OrderId
-        }, ct);
+        });
         context.CompletedSteps.Add("NotifySeller");
     }
 
@@ -122,7 +122,7 @@ public class OrderWorkflow : IWorkflow<OrderWorkflowInput, OrderWorkflowResult>
             Type = "order_confirmed",
             UserId = input.BuyerId,
             OrderId = input.OrderId
-        }, ct);
+        });
         context.CompletedSteps.Add("SendBuyerConfirmation");
     }
 

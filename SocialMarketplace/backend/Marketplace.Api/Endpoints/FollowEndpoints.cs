@@ -30,8 +30,8 @@ public static class FollowEndpoints
 
         group.MapGet("/status", async (HttpContext context,
             [FromQuery] Guid targetId,
-            [FromQuery] string targetType = "User",
-            IFollowService followService) =>
+            IFollowService followService,
+            [FromQuery] string targetType = "User") =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -43,9 +43,9 @@ public static class FollowEndpoints
         .WithName("GetFollowStatus");
 
         group.MapGet("/followers", async (HttpContext context,
+            IFollowService followService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            IFollowService followService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -56,10 +56,10 @@ public static class FollowEndpoints
         .WithName("GetMyFollowers");
 
         group.MapGet("/following", async (HttpContext context,
+            IFollowService followService,
             [FromQuery] string? targetType = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            IFollowService followService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -84,8 +84,8 @@ public static class FollowEndpoints
 
         group.MapDelete("/", async (HttpContext context,
             [FromQuery] Guid targetId,
-            [FromQuery] string targetType = "User",
-            IFollowService followService) =>
+            IFollowService followService,
+            [FromQuery] string targetType = "User") =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();

@@ -18,9 +18,9 @@ public static class ReviewEndpoints
         .WithName("GetReviewById");
 
         group.MapGet("/entity/{entityType}/{entityId:guid}", async (string entityType, Guid entityId,
+            IReviewService reviewService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10,
-            IReviewService reviewService) =>
+            [FromQuery] int pageSize = 10) =>
         {
             var (reviews, totalCount) = await reviewService.GetByEntityAsync(entityType, entityId, page, pageSize);
             return Results.Ok(new

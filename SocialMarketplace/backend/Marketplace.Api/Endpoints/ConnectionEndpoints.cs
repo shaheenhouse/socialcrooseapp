@@ -11,9 +11,9 @@ public static class ConnectionEndpoints
         var group = app.MapGroup("/api/connections").WithTags("Connections").RequireAuthorization();
 
         group.MapGet("/", async (HttpContext context,
+            IConnectionService connectionService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            IConnectionService connectionService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -27,9 +27,9 @@ public static class ConnectionEndpoints
         .WithName("GetMyConnections");
 
         group.MapGet("/pending", async (HttpContext context,
+            IConnectionService connectionService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            IConnectionService connectionService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -39,9 +39,9 @@ public static class ConnectionEndpoints
         .WithName("GetPendingConnections");
 
         group.MapGet("/sent", async (HttpContext context,
+            IConnectionService connectionService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            IConnectionService connectionService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -60,8 +60,8 @@ public static class ConnectionEndpoints
         .WithName("GetConnectionStats");
 
         group.MapGet("/suggestions", async (HttpContext context,
-            [FromQuery] int limit = 20,
-            IConnectionService connectionService) =>
+            IConnectionService connectionService,
+            [FromQuery] int limit = 20) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();

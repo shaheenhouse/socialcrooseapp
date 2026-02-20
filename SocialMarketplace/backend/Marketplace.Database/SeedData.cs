@@ -129,6 +129,12 @@ public static class DatabaseSeeder
         var follows = CreateFollows(users, stores, companies, now);
         context.Set<Follow>().AddRange(follows);
 
+        // ──────────────────────────────────────────────
+        // 18. PORTFOLIOS & RESUMES (sample data)
+        // ──────────────────────────────────────────────
+        var portfolios = CreatePortfolios(users, now);
+        context.Portfolios.AddRange(portfolios);
+
         await context.SaveChangesAsync();
     }
 
@@ -1402,7 +1408,7 @@ public static class DatabaseSeeder
 
         Add("ceo_james", "DataDriven Co.", "Data Analytics",
             "Business intelligence and data analytics solutions. Turn your data into competitive advantage.",
-            "Chicago", "US", 2017, "11-50",
+            "Chicago", "US", 2017, "11-50", "https://datadriven.co",
             ("alex_data", "Principal Data Scientist", "Analytics"));
 
         Add("buyer_sophie", "Atelier Sophie", "E-Commerce",
@@ -1888,5 +1894,87 @@ public static class DatabaseSeeder
         }
 
         return follows;
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  PORTFOLIOS (seed from sample project data)
+    // ═══════════════════════════════════════════════════
+    private static List<Portfolio> CreatePortfolios(Dictionary<string, User> users, DateTime now)
+    {
+        var portfolios = new List<Portfolio>();
+
+        if (users.TryGetValue("john_dev", out var johnDev))
+        {
+            portfolios.Add(new Portfolio
+            {
+                Id = Guid.NewGuid(),
+                UserId = johnDev.Id,
+                Slug = "john-dev",
+                IsPublic = true,
+                Theme = "dark",
+                PersonalInfo = """{"fullName":"John Developer","title":"Senior Full-Stack Engineer","email":"john@marketplace.dev","phone":"+1234567890","location":"San Francisco, CA","bio":"Senior Full-Stack Engineer with 10+ years of experience building scalable web applications, distributed systems, and cloud-native solutions. Expert in .NET, React, Node.js, and cloud platforms.","profileImage":"","socialLinks":[{"id":"github","platform":"github","url":"https://github.com/johndev"},{"id":"linkedin","platform":"linkedin","url":"https://linkedin.com/in/johndev"}]}""",
+                Education = """[{"id":"edu-1","degree":"Master of Science","institution":"Stanford University","field":"Computer Science","startDate":"2012-09","endDate":"2014-06","current":false,"gpa":"3.9","description":"Focused on distributed systems and machine learning."},{"id":"edu-2","degree":"Bachelor of Science","institution":"UC Berkeley","field":"Computer Science","startDate":"2008-09","endDate":"2012-06","current":false,"gpa":"3.7","description":"Dean's List honors."}]""",
+                Experience = """[{"id":"exp-1","title":"Senior Software Engineer","company":"TechCorp Solutions","location":"San Francisco, CA","locationType":"hybrid","startDate":"2022-01","endDate":"","current":true,"description":"Lead architect for the company's flagship SaaS platform serving 500K+ users.","technologies":[".NET Core","React","PostgreSQL","AWS","Docker","Kubernetes"],"responsibilities":["Architected microservices handling 10K+ requests/sec","Led team of 8 engineers","Reduced deployment time by 70% with CI/CD pipelines"]},{"id":"exp-2","title":"Software Engineer","company":"DataFlow Inc.","location":"Seattle, WA","locationType":"remote","startDate":"2018-06","endDate":"2021-12","current":false,"description":"Built real-time data processing pipelines for analytics platform.","technologies":["Node.js","TypeScript","Apache Kafka","Redis","MongoDB"],"responsibilities":["Designed event-driven architecture","Built real-time dashboards","Optimized query performance by 60%"]}]""",
+                Skills = """[{"id":"sk-1","name":".NET Core","level":"expert","category":"Backend"},{"id":"sk-2","name":"React","level":"expert","category":"Frontend"},{"id":"sk-3","name":"Node.js","level":"expert","category":"Backend"},{"id":"sk-4","name":"TypeScript","level":"expert","category":"Languages"},{"id":"sk-5","name":"PostgreSQL","level":"expert","category":"Databases"},{"id":"sk-6","name":"AWS","level":"proficient","category":"Cloud"},{"id":"sk-7","name":"Docker","level":"proficient","category":"DevOps"},{"id":"sk-8","name":"Kubernetes","level":"proficient","category":"DevOps"},{"id":"sk-9","name":"Python","level":"proficient","category":"Languages"},{"id":"sk-10","name":"GraphQL","level":"proficient","category":"Backend"}]""",
+                Roles = """[{"id":"role-1","title":"Full Stack Developer","level":"expert"},{"id":"role-2","title":"Software Architect","level":"expert"},{"id":"role-3","title":"Technical Lead","level":"proficient"}]""",
+                Certifications = """[{"id":"cert-1","name":"AWS Solutions Architect","issuer":"Amazon Web Services","issueDate":"2023-03","credentialUrl":"https://aws.amazon.com/certification/"},{"id":"cert-2","name":"Microsoft Certified: Azure Developer","issuer":"Microsoft","issueDate":"2022-08"}]""",
+                Projects = """[{"id":"proj-1","name":"Marketplace Platform","description":"Full-featured social marketplace with real-time messaging, escrow payments, and AI-powered search.","url":"https://marketplace.dev","technologies":["React","Next.js",".NET Core","PostgreSQL","Redis"],"highlights":["500K+ active users","Real-time notifications","AI-powered recommendations"],"startDate":"2022-01"},{"id":"proj-2","name":"DevOps Dashboard","description":"Real-time infrastructure monitoring and alerting tool for distributed systems.","technologies":["Node.js","React","Grafana","Prometheus","Kubernetes"],"highlights":["10K+ deployments tracked","99.99% uptime","Auto-scaling"],"startDate":"2020-06","endDate":"2021-12"}]""",
+                Achievements = """[{"id":"ach-1","title":"Open Source Contributor of the Year","description":"Recognized for significant contributions to .NET ecosystem","date":"2024-01","issuer":"GitHub Stars"}]""",
+                Languages = """[{"id":"lang-1","name":"English","proficiency":"native"},{"id":"lang-2","name":"Spanish","proficiency":"professional"}]""",
+                Resumes = """[{"id":"1","name":"My Resume (Profile)","templateId":"classic","isActive":true,"isStandard":true,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}]""",
+                CreatedAt = now,
+                IsDeleted = false
+            });
+        }
+
+        if (users.TryGetValue("priya_designer", out var priya))
+        {
+            portfolios.Add(new Portfolio
+            {
+                Id = Guid.NewGuid(),
+                UserId = priya.Id,
+                Slug = "priya-designer",
+                IsPublic = true,
+                Theme = "light",
+                PersonalInfo = """{"fullName":"Priya Sharma","title":"Senior UI/UX Designer","email":"priya@design.studio","phone":"+91-9876543210","location":"Mumbai, India","bio":"Creating intuitive and beautiful user experiences for web and mobile products. Design thinking practitioner with a passion for accessibility and inclusive design.","profileImage":"","socialLinks":[{"id":"dribbble","platform":"dribbble","url":"https://dribbble.com/priyasharma"},{"id":"behance","platform":"behance","url":"https://behance.net/priyasharma"},{"id":"linkedin","platform":"linkedin","url":"https://linkedin.com/in/priyasharma"}]}""",
+                Education = """[{"id":"edu-1","degree":"Master of Design","institution":"NID Ahmedabad","field":"Interaction Design","startDate":"2016-07","endDate":"2018-06","current":false,"gpa":"3.8","description":"Thesis on accessible design systems for emerging markets."}]""",
+                Experience = """[{"id":"exp-1","title":"Senior UI/UX Designer","company":"NordicTech","location":"Stockholm, Sweden (Remote)","locationType":"remote","startDate":"2023-01","endDate":"","current":true,"description":"Leading design for fintech products used by 2M+ users across Scandinavia.","technologies":["Figma","Framer","Storybook","TailwindCSS"],"responsibilities":["Led design system serving 5 product teams","Improved conversion rates by 35%","Mentored 4 junior designers"]},{"id":"exp-2","title":"UI/UX Designer","company":"Atelier Sophie","location":"Paris, France","locationType":"hybrid","startDate":"2020-06","endDate":"2022-12","current":false,"description":"Designed e-commerce experiences for luxury artisan marketplace.","technologies":["Figma","Adobe XD","Sketch","InVision"],"responsibilities":["Redesigned checkout flow reducing cart abandonment by 25%","Created comprehensive style guide","Conducted 50+ user interviews"]}]""",
+                Skills = """[{"id":"sk-1","name":"UI/UX Design","level":"expert","category":"Design"},{"id":"sk-2","name":"Figma","level":"expert","category":"Design Tools"},{"id":"sk-3","name":"Adobe Photoshop","level":"proficient","category":"Design Tools"},{"id":"sk-4","name":"Adobe Illustrator","level":"proficient","category":"Design Tools"},{"id":"sk-5","name":"Sketch","level":"proficient","category":"Design Tools"},{"id":"sk-6","name":"Design Systems","level":"expert","category":"Design"},{"id":"sk-7","name":"User Research","level":"expert","category":"Research"},{"id":"sk-8","name":"Prototyping","level":"expert","category":"Design"},{"id":"sk-9","name":"Motion Design","level":"intermediate","category":"Design"},{"id":"sk-10","name":"TailwindCSS","level":"proficient","category":"Frontend"}]""",
+                Roles = """[{"id":"role-1","title":"UI/UX Designer","level":"expert"},{"id":"role-2","title":"Design Lead","level":"proficient"},{"id":"role-3","title":"Product Designer","level":"expert"}]""",
+                Certifications = """[{"id":"cert-1","name":"Google UX Design Certificate","issuer":"Google","issueDate":"2022-05"},{"id":"cert-2","name":"Nielsen Norman UX Certification","issuer":"Nielsen Norman Group","issueDate":"2023-01"}]""",
+                Projects = """[{"id":"proj-1","name":"NordicPay Redesign","description":"Complete redesign of a fintech payment platform serving 2M+ users. Improved NPS score from 45 to 78.","technologies":["Figma","React","Storybook"],"highlights":["35% conversion improvement","New design system","Accessibility AA compliance"],"startDate":"2023-03"},{"id":"proj-2","name":"Artisan Marketplace UX","description":"End-to-end UX design for luxury artisan e-commerce platform.","technologies":["Figma","Adobe XD","InVision"],"highlights":["25% reduction in cart abandonment","50+ user interviews","Complete style guide"],"startDate":"2020-06","endDate":"2022-12"}]""",
+                Achievements = """[]""",
+                Languages = """[{"id":"lang-1","name":"English","proficiency":"fluent"},{"id":"lang-2","name":"Hindi","proficiency":"native"},{"id":"lang-3","name":"Marathi","proficiency":"native"}]""",
+                Resumes = """[{"id":"1","name":"My Resume (Profile)","templateId":"modern","isActive":true,"isStandard":true,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}]""",
+                CreatedAt = now,
+                IsDeleted = false
+            });
+        }
+
+        if (users.TryGetValue("alex_data", out var alex))
+        {
+            portfolios.Add(new Portfolio
+            {
+                Id = Guid.NewGuid(),
+                UserId = alex.Id,
+                Slug = "alex-data",
+                IsPublic = true,
+                Theme = "dark",
+                PersonalInfo = """{"fullName":"Alex Chen","title":"Data Scientist & ML Engineer","email":"alex@datascience.ai","location":"New York, NY","bio":"Data Scientist specializing in NLP, computer vision, and production ML systems. Building AI-powered products that scale.","profileImage":"","socialLinks":[{"id":"github","platform":"github","url":"https://github.com/alexchen"},{"id":"linkedin","platform":"linkedin","url":"https://linkedin.com/in/alexchen"}]}""",
+                Education = """[{"id":"edu-1","degree":"PhD","institution":"MIT","field":"Machine Learning","startDate":"2015-09","endDate":"2019-06","current":false,"description":"Research on transformer architectures for NLP tasks."},{"id":"edu-2","degree":"Bachelor of Science","institution":"Caltech","field":"Mathematics","startDate":"2011-09","endDate":"2015-06","current":false,"gpa":"3.95"}]""",
+                Experience = """[{"id":"exp-1","title":"Senior Data Scientist","company":"InnovateAI","location":"New York, NY","locationType":"hybrid","startDate":"2021-01","endDate":"","current":true,"description":"Leading ML team building production recommendation systems and NLP pipelines.","technologies":["Python","PyTorch","TensorFlow","Spark","AWS SageMaker"],"responsibilities":["Built recommendation engine improving engagement by 40%","Deployed 15+ ML models to production","Led team of 5 data scientists"]}]""",
+                Skills = """[{"id":"sk-1","name":"Python","level":"expert","category":"Languages"},{"id":"sk-2","name":"PyTorch","level":"expert","category":"ML Frameworks"},{"id":"sk-3","name":"TensorFlow","level":"expert","category":"ML Frameworks"},{"id":"sk-4","name":"NLP","level":"expert","category":"AI/ML"},{"id":"sk-5","name":"Computer Vision","level":"proficient","category":"AI/ML"},{"id":"sk-6","name":"Apache Spark","level":"proficient","category":"Big Data"},{"id":"sk-7","name":"SQL","level":"expert","category":"Databases"},{"id":"sk-8","name":"AWS SageMaker","level":"proficient","category":"Cloud"}]""",
+                Roles = """[{"id":"role-1","title":"Data Scientist","level":"expert"},{"id":"role-2","title":"ML Engineer","level":"expert"},{"id":"role-3","title":"AI Researcher","level":"proficient"}]""",
+                Certifications = """[]""",
+                Projects = """[{"id":"proj-1","name":"Smart Recommendation Engine","description":"Built production recommendation system processing 100M+ events daily.","technologies":["Python","PyTorch","Apache Kafka","Redis"],"highlights":["40% engagement improvement","100M+ events/day","Real-time inference"],"startDate":"2021-06"}]""",
+                Achievements = """[{"id":"ach-1","title":"Best Paper Award - NeurIPS","description":"Awarded for research on efficient transformer architectures","date":"2019-12","issuer":"NeurIPS"}]""",
+                Languages = """[{"id":"lang-1","name":"English","proficiency":"native"},{"id":"lang-2","name":"Mandarin","proficiency":"native"}]""",
+                Resumes = """[{"id":"1","name":"My Resume (Profile)","templateId":"minimal","isActive":true,"isStandard":true,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}]""",
+                CreatedAt = now,
+                IsDeleted = false
+            });
+        }
+
+        return portfolios;
     }
 }

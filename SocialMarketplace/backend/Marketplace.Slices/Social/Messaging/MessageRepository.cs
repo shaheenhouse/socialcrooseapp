@@ -254,10 +254,10 @@ public class ConversationRepository : IConversationRepository
     }
 }
 
-public record ConversationWithParticipant : Conversation
+public class ConversationWithParticipant : Conversation
 {
-    public int UnreadCount { get; init; }
-    public bool IsMuted { get; init; }
-    public bool IsArchived { get; init; }
-    public DateTime? LastReadAt { get; init; }
+    public int UnreadCount { get; set; }
+    public bool IsMuted { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTime? LastReadAt { get; set; }
 }

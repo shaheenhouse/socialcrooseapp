@@ -12,10 +12,10 @@ public static class OrderEndpoints
         var group = app.MapGroup("/api/orders").WithTags("Orders");
 
         group.MapGet("/", async (HttpContext context,
+            IOrderService orderService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] string? status = null,
-            IOrderService orderService) =>
+            [FromQuery] string? status = null) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -30,10 +30,10 @@ public static class OrderEndpoints
         .WithName("GetUserOrders");
 
         group.MapGet("/sales", async (HttpContext context,
+            IOrderService orderService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] string? status = null,
-            IOrderService orderService) =>
+            [FromQuery] string? status = null) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();

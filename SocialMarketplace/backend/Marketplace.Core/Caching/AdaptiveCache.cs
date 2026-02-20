@@ -49,7 +49,7 @@ public sealed class AdaptiveCache : IAdaptiveCache
 
             if (!value.IsNullOrEmpty)
             {
-                var result = JsonSerializer.Deserialize<T>(value!, _jsonOptions);
+                var result = JsonSerializer.Deserialize<T>((string)value!, _jsonOptions);
                 if (result != null)
                 {
                     // Populate L1 cache

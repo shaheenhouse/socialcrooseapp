@@ -114,6 +114,11 @@ public class MarketplaceDbContext : DbContext
     public DbSet<Discount> Discounts => Set<Discount>();
     public DbSet<DiscountUsage> DiscountUsages => Set<DiscountUsage>();
 
+    // Portfolio & Resume
+    public DbSet<Portfolio> Portfolios => Set<Portfolio>();
+    public DbSet<Resume> Resumes => Set<Resume>();
+    public DbSet<Design> Designs => Set<Design>();
+
     // Audit & Outbox
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();

@@ -14,6 +14,9 @@ using Marketplace.Slices.Social.Search;
 using Marketplace.Slices.Social.Messaging;
 using Marketplace.Slices.Social.Follows;
 using Marketplace.Slices.Social.Connections;
+using Marketplace.Slices.PortfolioSlice;
+using Marketplace.Slices.ResumeSlice;
+using Marketplace.Slices.DesignSlice;
 
 namespace Marketplace.Slices;
 
@@ -76,6 +79,18 @@ public static class ServiceCollectionExtensions
         // Connections
         services.AddScoped<IConnectionRepository, ConnectionRepository>();
         services.AddScoped<IConnectionService, ConnectionService>();
+
+        // Portfolio
+        services.AddScoped<IPortfolioRepository, PortfolioRepository>();
+        services.AddScoped<IPortfolioService, PortfolioService>();
+
+        // Resume
+        services.AddScoped<IResumeRepository, ResumeRepository>();
+        services.AddScoped<IResumeService, ResumeService>();
+
+        // Design
+        services.AddScoped<IDesignRepository, DesignRepository>();
+        services.AddScoped<IDesignService, DesignService>();
 
         return services;
     }

@@ -39,11 +39,11 @@ public static class UserEndpoints
 
         // Get all users (paginated)
         group.MapGet("/", async (
+            IUserService userService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
-            [FromQuery] string? status = null,
-            IUserService userService) =>
+            [FromQuery] string? status = null) =>
         {
             var (users, totalCount) = await userService.GetAllAsync(page, pageSize, search, status);
             return Results.Ok(new

@@ -48,4 +48,7 @@ public class User : BaseEntity
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     public virtual Wallet? Wallet { get; set; }
     public virtual ICollection<UserFeatureFlag> FeatureFlags { get; set; } = new List<UserFeatureFlag>();
+    public virtual Portfolio? Portfolio { get; set; }
+    public virtual ICollection<Design> Designs { get; set; } = new List<Design>();
+    public virtual ICollection<Resume> Resumes { get; set; } = new List<Resume>();
 }

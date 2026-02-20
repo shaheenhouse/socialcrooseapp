@@ -11,10 +11,10 @@ public static class NotificationEndpoints
         var group = app.MapGroup("/api/notifications").WithTags("Notifications").RequireAuthorization();
 
         group.MapGet("/", async (HttpContext context,
+            INotificationService notificationService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] bool? unreadOnly = null,
-            INotificationService notificationService) =>
+            [FromQuery] bool? unreadOnly = null) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();

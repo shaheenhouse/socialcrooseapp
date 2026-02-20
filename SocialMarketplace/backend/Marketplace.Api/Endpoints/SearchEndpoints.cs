@@ -12,14 +12,14 @@ public static class SearchEndpoints
         var group = app.MapGroup("/api/search").WithTags("Search");
 
         group.MapGet("/", async (HttpContext context,
+            ISearchService searchService,
             [FromQuery] string q = "",
             [FromQuery] string? location = null,
             [FromQuery] string? industry = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            ISearchService searchService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             var filters = new SearchFilters
@@ -33,11 +33,11 @@ public static class SearchEndpoints
         .WithName("UnifiedSearch");
 
         group.MapGet("/users", async (HttpContext context,
+            ISearchService searchService,
             [FromQuery] string q = "",
             [FromQuery] string? location = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            ISearchService searchService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             var filters = new SearchFilters { Location = location };
@@ -47,12 +47,12 @@ public static class SearchEndpoints
         .WithName("SearchUsers");
 
         group.MapGet("/services", async (HttpContext context,
+            ISearchService searchService,
             [FromQuery] string q = "",
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            ISearchService searchService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             var filters = new SearchFilters { MinPrice = minPrice, MaxPrice = maxPrice };
@@ -62,11 +62,11 @@ public static class SearchEndpoints
         .WithName("SearchServices");
 
         group.MapGet("/projects", async (HttpContext context,
+            ISearchService searchService,
             [FromQuery] string q = "",
             [FromQuery] string? status = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            ISearchService searchService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             var filters = new SearchFilters { Status = status };
@@ -76,12 +76,12 @@ public static class SearchEndpoints
         .WithName("SearchProjects");
 
         group.MapGet("/companies", async (HttpContext context,
+            ISearchService searchService,
             [FromQuery] string q = "",
             [FromQuery] string? industry = null,
             [FromQuery] string? location = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            ISearchService searchService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             var filters = new SearchFilters { Industry = industry, Location = location };
@@ -91,10 +91,10 @@ public static class SearchEndpoints
         .WithName("SearchCompanies");
 
         group.MapGet("/posts", async (HttpContext context,
+            ISearchService searchService,
             [FromQuery] string q = "",
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20,
-            ISearchService searchService) =>
+            [FromQuery] int pageSize = 20) =>
         {
             var userId = GetUserId(context);
             var results = await searchService.SearchPostsAsync(q, new SearchFilters(), userId, page, pageSize);
@@ -113,8 +113,8 @@ public static class SearchEndpoints
         .WithName("GetSearchHistory");
 
         group.MapDelete("/history", async (HttpContext context,
-            [FromQuery] Guid? id = null,
-            ISearchService searchService) =>
+            ISearchService searchService,
+            [FromQuery] Guid? id = null) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();

@@ -279,6 +279,40 @@ export const notificationApi = {
   markAllAsRead: () => api.patch('/notifications/read-all'),
 };
 
+// Portfolio API
+export const portfolioApi = {
+  getPublic: (params?: { page?: number; pageSize?: number }) =>
+    api.get('/portfolios/public', { params }),
+  getBySlug: (slug: string) => api.get(`/portfolios/slug/${slug}`),
+  getMe: () => api.get('/portfolios/me'),
+  getById: (id: string) => api.get(`/portfolios/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/portfolios', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/portfolios/${id}`, data),
+  delete: (id: string) => api.delete(`/portfolios/${id}`),
+};
+
+// Resume API
+export const resumeApi = {
+  getMe: () => api.get('/resumes/me'),
+  getById: (id: string) => api.get(`/resumes/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/resumes', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/resumes/${id}`, data),
+  delete: (id: string) => api.delete(`/resumes/${id}`),
+};
+
+// Design API
+export const designApi = {
+  getMe: (params?: { page?: number; pageSize?: number }) =>
+    api.get('/designs/me', { params }),
+  getTemplates: (params?: { page?: number; pageSize?: number; category?: string }) =>
+    api.get('/designs/templates', { params }),
+  getById: (id: string) => api.get(`/designs/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/designs', data),
+  duplicate: (id: string) => api.post(`/designs/${id}/duplicate`),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/designs/${id}`, data),
+  delete: (id: string) => api.delete(`/designs/${id}`),
+};
+
 // Company API
 export const companyApi = {
   getAll: (params?: { page?: number; pageSize?: number; search?: string; industry?: string }) =>

@@ -11,10 +11,10 @@ public static class MessageEndpoints
         var group = app.MapGroup("/api/messages").WithTags("Messages").RequireAuthorization();
 
         group.MapGet("/conversations", async (HttpContext context,
+            IMessageService messageService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
-            [FromQuery] bool includeArchived = false,
-            IMessageService messageService) =>
+            [FromQuery] bool includeArchived = false) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();
@@ -61,10 +61,10 @@ public static class MessageEndpoints
         .WithName("CreateGroupConversation");
 
         group.MapGet("/conversations/{id:guid}/messages", async (HttpContext context, Guid id,
+            IMessageService messageService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50,
-            [FromQuery] Guid? before = null,
-            IMessageService messageService) =>
+            [FromQuery] Guid? before = null) =>
         {
             var userId = GetUserId(context);
             if (userId == null) return Results.Unauthorized();

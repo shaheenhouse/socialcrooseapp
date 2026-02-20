@@ -69,7 +69,7 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
             ProjectId = input.ProjectId,
             Skills = input.RequiredSkills,
             Budget = input.Budget
-        }, ct);
+        });
 
         // Index for search
         await _jobQueue.EnqueueAsync("search-indexing", new
@@ -77,7 +77,7 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
             Type = "project",
             Id = input.ProjectId,
             Action = "index"
-        }, ct);
+        });
     }
 
     private async Task HandleBidAwardAsync(ProjectWorkflowInput input, WorkflowContext context, CancellationToken ct)
@@ -88,7 +88,7 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
             Type = "bid_awarded",
             UserId = input.FreelancerId,
             ProjectId = input.ProjectId
-        }, ct);
+        });
 
         // Create escrow
         await _jobQueue.EnqueueAsync("escrow", new
@@ -98,7 +98,7 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
             Amount = input.Budget,
             ClientId = input.ClientId,
             FreelancerId = input.FreelancerId
-        }, ct);
+        });
 
         // Notify other bidders
         await _jobQueue.EnqueueAsync("notifications", new
@@ -106,7 +106,7 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
             Type = "project_awarded",
             ProjectId = input.ProjectId,
             ExcludeUserId = input.FreelancerId
-        }, ct);
+        });
     }
 
     private async Task HandleMilestoneCompletionAsync(ProjectWorkflowInput input, WorkflowContext context, CancellationToken ct)
@@ -118,14 +118,14 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
             UserId = input.ClientId,
             ProjectId = input.ProjectId,
             MilestoneId = input.MilestoneId
-        }, ct);
+        });
 
         // Update project progress
         await _jobQueue.EnqueueAsync("project-updates", new
         {
             ProjectId = input.ProjectId,
             Action = "update_progress"
-        }, ct);
+        });
     }
 
     private async Task HandleProjectCompletionAsync(ProjectWorkflowInput input, WorkflowContext context, CancellationToken ct)
@@ -135,7 +135,7 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
         {
             Action = "release",
             ProjectId = input.ProjectId
-        }, ct);
+        });
 
         // Request reviews
         await _jobQueue.EnqueueAsync("notifications", new
@@ -144,14 +144,14 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
             ProjectId = input.ProjectId,
             ClientId = input.ClientId,
             FreelancerId = input.FreelancerId
-        }, ct);
+        });
 
         // Update freelancer stats
         await _jobQueue.EnqueueAsync("stats-update", new
         {
             UserId = input.FreelancerId,
             Type = "project_completed"
-        }, ct);
+        });
     }
 
     private async Task HandleProjectCancellationAsync(ProjectWorkflowInput input, WorkflowContext context, CancellationToken ct)
@@ -162,14 +162,14 @@ public class ProjectWorkflow : IWorkflow<ProjectWorkflowInput, ProjectWorkflowRe
             Action = "refund",
             ProjectId = input.ProjectId,
             Reason = input.CancellationReason
-        }, ct);
+        });
 
         // Notify participants
         await _jobQueue.EnqueueAsync("notifications", new
         {
             Type = "project_cancelled",
             ProjectId = input.ProjectId
-        }, ct);
+        });
     }
 }
 

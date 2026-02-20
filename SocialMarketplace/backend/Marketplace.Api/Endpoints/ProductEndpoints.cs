@@ -11,6 +11,7 @@ public static class ProductEndpoints
         var group = app.MapGroup("/api/products").WithTags("Products");
 
         group.MapGet("/", async (
+            IProductService productService,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
@@ -18,8 +19,7 @@ public static class ProductEndpoints
             [FromQuery] Guid? store = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
-            [FromQuery] string? sortBy = null,
-            IProductService productService) =>
+            [FromQuery] string? sortBy = null) =>
         {
             var query = new ProductQueryParams
             {
@@ -95,9 +95,9 @@ public static class ProductEndpoints
         .WithName("GetProductVariants");
 
         group.MapGet("/{id:guid}/reviews", async (Guid id,
+            IProductService productService,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10,
-            IProductService productService) =>
+            [FromQuery] int pageSize = 10) =>
         {
             var reviews = await productService.GetReviewsAsync(id, page, pageSize);
             return Results.Ok(new { data = reviews });

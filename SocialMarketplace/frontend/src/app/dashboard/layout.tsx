@@ -28,6 +28,8 @@ import {
   Wallet,
   Users,
   Building2,
+  Globe,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -115,6 +117,22 @@ const navigation = [
     name: "Company",
     href: "/dashboard/company",
     icon: Building2,
+  },
+  {
+    name: "Portfolio",
+    href: "/dashboard/portfolio",
+    icon: Globe,
+  },
+  {
+    name: "Resumes",
+    href: "/dashboard/resume",
+    icon: FileText,
+  },
+  {
+    name: "Design Studio",
+    href: "/dashboard/designs",
+    icon: Palette,
+    badge: "New",
   },
 ];
 
