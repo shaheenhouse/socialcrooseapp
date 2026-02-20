@@ -31,19 +31,19 @@ public class StoreRepository : IStoreRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT s.id, s.owner_id as OwnerId, s.name, s.slug, s.description, s.short_description as ShortDescription,
-                   s.logo_url as LogoUrl, s.banner_url as BannerUrl, s.status, s.email, s.phone, s.website,
-                   s.address, s.city, s.state, s.country, s.postal_code as PostalCode,
-                   s.commission_rate as CommissionRate, s.rating, s.total_reviews as TotalReviews,
-                   s.total_products as TotalProducts, s.total_orders as TotalOrders, s.total_sales as TotalSales,
-                   s.is_verified as IsVerified, s.is_featured as IsFeatured,
-                   s.social_links as SocialLinks, s.business_hours as BusinessHours,
-                   s.shipping_policy as ShippingPolicy, s.return_policy as ReturnPolicy,
-                   s.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as OwnerName, u.avatar_url as OwnerAvatarUrl
+            SELECT s."Id", s."OwnerId", s."Name", s."Slug", s."Description", s."ShortDescription",
+                   s."LogoUrl", s."BannerUrl", s."Status", s."Email", s."Phone", s."Website",
+                   s."Address", s."City", s."State", s."Country", s."PostalCode",
+                   s."CommissionRate", s."Rating", s."TotalReviews",
+                   s."TotalProducts", s."TotalOrders", s."TotalSales",
+                   s."IsVerified", s."IsFeatured",
+                   s."SocialLinks", s."BusinessHours",
+                   s."ShippingPolicy", s."ReturnPolicy",
+                   s."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as OwnerName, u."AvatarUrl" as OwnerAvatarUrl
             FROM stores s
-            JOIN users u ON s.owner_id = u.id
-            WHERE s.id = @Id AND s.is_deleted = false
+            JOIN users u ON s."OwnerId" = u."Id"
+            WHERE s."Id" = @Id AND s."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<StoreDto>(sql, new { Id = id });
@@ -54,19 +54,19 @@ public class StoreRepository : IStoreRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT s.id, s.owner_id as OwnerId, s.name, s.slug, s.description, s.short_description as ShortDescription,
-                   s.logo_url as LogoUrl, s.banner_url as BannerUrl, s.status, s.email, s.phone, s.website,
-                   s.address, s.city, s.state, s.country, s.postal_code as PostalCode,
-                   s.commission_rate as CommissionRate, s.rating, s.total_reviews as TotalReviews,
-                   s.total_products as TotalProducts, s.total_orders as TotalOrders, s.total_sales as TotalSales,
-                   s.is_verified as IsVerified, s.is_featured as IsFeatured,
-                   s.social_links as SocialLinks, s.business_hours as BusinessHours,
-                   s.shipping_policy as ShippingPolicy, s.return_policy as ReturnPolicy,
-                   s.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as OwnerName, u.avatar_url as OwnerAvatarUrl
+            SELECT s."Id", s."OwnerId", s."Name", s."Slug", s."Description", s."ShortDescription",
+                   s."LogoUrl", s."BannerUrl", s."Status", s."Email", s."Phone", s."Website",
+                   s."Address", s."City", s."State", s."Country", s."PostalCode",
+                   s."CommissionRate", s."Rating", s."TotalReviews",
+                   s."TotalProducts", s."TotalOrders", s."TotalSales",
+                   s."IsVerified", s."IsFeatured",
+                   s."SocialLinks", s."BusinessHours",
+                   s."ShippingPolicy", s."ReturnPolicy",
+                   s."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as OwnerName, u."AvatarUrl" as OwnerAvatarUrl
             FROM stores s
-            JOIN users u ON s.owner_id = u.id
-            WHERE s.slug = @Slug AND s.is_deleted = false
+            JOIN users u ON s."OwnerId" = u."Id"
+            WHERE s."Slug" = @Slug AND s."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<StoreDto>(sql, new { Slug = slug });
@@ -77,13 +77,13 @@ public class StoreRepository : IStoreRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT s.id, s.owner_id as OwnerId, s.name, s.slug, s.description,
-                   s.logo_url as LogoUrl, s.banner_url as BannerUrl, s.status,
-                   s.rating, s.total_reviews as TotalReviews, s.total_products as TotalProducts,
-                   s.total_orders as TotalOrders, s.total_sales as TotalSales,
-                   s.is_verified as IsVerified, s.created_at as CreatedAt
+            SELECT s."Id", s."OwnerId", s."Name", s."Slug", s."Description",
+                   s."LogoUrl", s."BannerUrl", s."Status",
+                   s."Rating", s."TotalReviews", s."TotalProducts",
+                   s."TotalOrders", s."TotalSales",
+                   s."IsVerified", s."CreatedAt"
             FROM stores s
-            WHERE s.owner_id = @OwnerId AND s.is_deleted = false
+            WHERE s."OwnerId" = @OwnerId AND s."IsDeleted" = false
             LIMIT 1
             """;
 
@@ -94,25 +94,25 @@ public class StoreRepository : IStoreRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = "WHERE s.is_deleted = false";
+        var whereClause = "WHERE s.\"IsDeleted\" = false";
         if (!string.IsNullOrEmpty(search))
-            whereClause += " AND (s.name ILIKE @Search OR s.description ILIKE @Search)";
+            whereClause += " AND (s.\"Name\" ILIKE @Search OR s.\"Description\" ILIKE @Search)";
         if (!string.IsNullOrEmpty(status))
-            whereClause += " AND s.status = @Status::integer";
+            whereClause += " AND s.\"Status\" = @Status::integer";
 
         var countSql = $"SELECT COUNT(*) FROM stores s {whereClause}";
         var totalCount = await connection.ExecuteScalarAsync<int>(countSql, new { Search = $"%{search}%", Status = status });
 
         var sql = $"""
-            SELECT s.id, s.name, s.slug, s.logo_url as LogoUrl, s.short_description as ShortDescription,
-                   s.status, s.rating, s.total_reviews as TotalReviews, s.total_products as TotalProducts,
-                   s.total_orders as TotalOrders, s.is_verified as IsVerified, s.is_featured as IsFeatured,
-                   s.city, s.country, s.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as OwnerName
+            SELECT s."Id", s."Name", s."Slug", s."LogoUrl", s."ShortDescription",
+                   s."Status", s."Rating", s."TotalReviews", s."TotalProducts",
+                   s."TotalOrders", s."IsVerified", s."IsFeatured",
+                   s."City", s."Country", s."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as OwnerName
             FROM stores s
-            JOIN users u ON s.owner_id = u.id
+            JOIN users u ON s."OwnerId" = u."Id"
             {whereClause}
-            ORDER BY s.is_featured DESC, s.rating DESC, s.created_at DESC
+            ORDER BY s."IsFeatured" DESC, s."Rating" DESC, s."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -135,13 +135,17 @@ public class StoreRepository : IStoreRepository
         var slug = GenerateSlug(dto.Name);
 
         const string sql = """
-            INSERT INTO stores (id, owner_id, name, slug, description, short_description, logo_url, banner_url,
-                               email, phone, website, address, city, state, country, postal_code,
-                               status, shipping_policy, return_policy, created_at, is_deleted)
+            INSERT INTO stores ("Id", "OwnerId", "Name", "Slug", "Description", "ShortDescription", "LogoUrl", "BannerUrl",
+                               "Email", "Phone", "Website", "Address", "City", "State", "Country", "PostalCode",
+                               "Status", "CommissionRate", "Rating", "TotalReviews", "TotalProducts",
+                               "TotalOrders", "TotalSales", "IsVerified", "IsFeatured",
+                               "ShippingPolicy", "ReturnPolicy", "CreatedAt", "IsDeleted")
             VALUES (@Id, @OwnerId, @Name, @Slug, @Description, @ShortDescription, @LogoUrl, @BannerUrl,
                    @Email, @Phone, @Website, @Address, @City, @State, @Country, @PostalCode,
-                   @Status, @ShippingPolicy, @ReturnPolicy, NOW(), false)
-            RETURNING id
+                   @Status, 10.0, 0, 0, 0,
+                   0, 0, false, false,
+                   @ShippingPolicy, @ReturnPolicy, NOW(), false)
+            RETURNING "Id"
             """;
 
         return await connection.ExecuteScalarAsync<Guid>(sql, new
@@ -176,24 +180,24 @@ public class StoreRepository : IStoreRepository
         var parameters = new DynamicParameters();
         parameters.Add("Id", id);
 
-        if (dto.Name != null) { updates.Add("name = @Name"); parameters.Add("Name", dto.Name); }
-        if (dto.Description != null) { updates.Add("description = @Description"); parameters.Add("Description", dto.Description); }
-        if (dto.ShortDescription != null) { updates.Add("short_description = @ShortDescription"); parameters.Add("ShortDescription", dto.ShortDescription); }
-        if (dto.LogoUrl != null) { updates.Add("logo_url = @LogoUrl"); parameters.Add("LogoUrl", dto.LogoUrl); }
-        if (dto.BannerUrl != null) { updates.Add("banner_url = @BannerUrl"); parameters.Add("BannerUrl", dto.BannerUrl); }
-        if (dto.Email != null) { updates.Add("email = @Email"); parameters.Add("Email", dto.Email); }
-        if (dto.Phone != null) { updates.Add("phone = @Phone"); parameters.Add("Phone", dto.Phone); }
-        if (dto.Website != null) { updates.Add("website = @Website"); parameters.Add("Website", dto.Website); }
-        if (dto.Address != null) { updates.Add("address = @Address"); parameters.Add("Address", dto.Address); }
-        if (dto.City != null) { updates.Add("city = @City"); parameters.Add("City", dto.City); }
-        if (dto.Country != null) { updates.Add("country = @Country"); parameters.Add("Country", dto.Country); }
-        if (dto.ShippingPolicy != null) { updates.Add("shipping_policy = @ShippingPolicy"); parameters.Add("ShippingPolicy", dto.ShippingPolicy); }
-        if (dto.ReturnPolicy != null) { updates.Add("return_policy = @ReturnPolicy"); parameters.Add("ReturnPolicy", dto.ReturnPolicy); }
+        if (dto.Name != null) { updates.Add("\"Name\" = @Name"); parameters.Add("Name", dto.Name); }
+        if (dto.Description != null) { updates.Add("\"Description\" = @Description"); parameters.Add("Description", dto.Description); }
+        if (dto.ShortDescription != null) { updates.Add("\"ShortDescription\" = @ShortDescription"); parameters.Add("ShortDescription", dto.ShortDescription); }
+        if (dto.LogoUrl != null) { updates.Add("\"LogoUrl\" = @LogoUrl"); parameters.Add("LogoUrl", dto.LogoUrl); }
+        if (dto.BannerUrl != null) { updates.Add("\"BannerUrl\" = @BannerUrl"); parameters.Add("BannerUrl", dto.BannerUrl); }
+        if (dto.Email != null) { updates.Add("\"Email\" = @Email"); parameters.Add("Email", dto.Email); }
+        if (dto.Phone != null) { updates.Add("\"Phone\" = @Phone"); parameters.Add("Phone", dto.Phone); }
+        if (dto.Website != null) { updates.Add("\"Website\" = @Website"); parameters.Add("Website", dto.Website); }
+        if (dto.Address != null) { updates.Add("\"Address\" = @Address"); parameters.Add("Address", dto.Address); }
+        if (dto.City != null) { updates.Add("\"City\" = @City"); parameters.Add("City", dto.City); }
+        if (dto.Country != null) { updates.Add("\"Country\" = @Country"); parameters.Add("Country", dto.Country); }
+        if (dto.ShippingPolicy != null) { updates.Add("\"ShippingPolicy\" = @ShippingPolicy"); parameters.Add("ShippingPolicy", dto.ShippingPolicy); }
+        if (dto.ReturnPolicy != null) { updates.Add("\"ReturnPolicy\" = @ReturnPolicy"); parameters.Add("ReturnPolicy", dto.ReturnPolicy); }
 
         if (updates.Count == 0) return true;
-        updates.Add("updated_at = NOW()");
+        updates.Add("\"UpdatedAt\" = NOW()");
 
-        var sql = $"UPDATE stores SET {string.Join(", ", updates)} WHERE id = @Id AND is_deleted = false";
+        var sql = $"UPDATE stores SET {string.Join(", ", updates)} WHERE \"Id\" = @Id AND \"IsDeleted\" = false";
         return await connection.ExecuteAsync(sql, parameters) > 0;
     }
 
@@ -201,7 +205,7 @@ public class StoreRepository : IStoreRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE stores SET is_deleted = true, deleted_at = NOW() WHERE id = @Id", new { Id = id }) > 0;
+            "UPDATE stores SET \"IsDeleted\" = true, \"DeletedAt\" = NOW() WHERE \"Id\" = @Id", new { Id = id }) > 0;
     }
 
     public async Task<IEnumerable<StoreEmployeeDto>> GetEmployeesAsync(Guid storeId)
@@ -209,14 +213,14 @@ public class StoreRepository : IStoreRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT se.id, se.user_id as UserId, se.title, se.department,
-                   se.is_active as IsActive, se.joined_at as JoinedAt,
-                   u.first_name as FirstName, u.last_name as LastName,
-                   u.avatar_url as AvatarUrl, u.email
+            SELECT se."Id", se."UserId", se."Title", se."Department",
+                   se."IsActive", se."JoinedAt",
+                   u."FirstName", u."LastName",
+                   u."AvatarUrl", u."Email"
             FROM store_employees se
-            JOIN users u ON se.user_id = u.id
-            WHERE se.store_id = @StoreId AND se.is_active = true
-            ORDER BY se.joined_at
+            JOIN users u ON se."UserId" = u."Id"
+            WHERE se."StoreId" = @StoreId AND se."IsActive" = true
+            ORDER BY se."JoinedAt"
             """;
 
         return await connection.QueryAsync<StoreEmployeeDto>(sql, new { StoreId = storeId });
@@ -228,16 +232,16 @@ public class StoreRepository : IStoreRepository
 
         const string sql = """
             SELECT 
-                s.total_products as TotalProducts,
-                s.total_orders as TotalOrders,
-                s.total_sales as TotalSales,
-                s.total_reviews as TotalReviews,
-                s.rating as AverageRating,
-                (SELECT COUNT(*) FROM orders o WHERE o.store_id = @StoreId AND o.status = 0 AND o.is_deleted = false) as PendingOrders,
-                (SELECT COUNT(*) FROM orders o WHERE o.store_id = @StoreId AND o.created_at >= NOW() - INTERVAL '30 days' AND o.is_deleted = false) as OrdersThisMonth,
-                (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.store_id = @StoreId AND o.created_at >= NOW() - INTERVAL '30 days' AND o.is_deleted = false) as RevenueThisMonth
+                s."TotalProducts",
+                s."TotalOrders",
+                s."TotalSales",
+                s."TotalReviews",
+                s."Rating" as AverageRating,
+                (SELECT COUNT(*) FROM orders o WHERE o."StoreId" = @StoreId AND o."Status" = 0 AND o."IsDeleted" = false) as PendingOrders,
+                (SELECT COUNT(*) FROM orders o WHERE o."StoreId" = @StoreId AND o."CreatedAt" >= NOW() - INTERVAL '30 days' AND o."IsDeleted" = false) as OrdersThisMonth,
+                (SELECT COALESCE(SUM(o."TotalAmount"), 0) FROM orders o WHERE o."StoreId" = @StoreId AND o."CreatedAt" >= NOW() - INTERVAL '30 days' AND o."IsDeleted" = false) as RevenueThisMonth
             FROM stores s
-            WHERE s.id = @StoreId
+            WHERE s."Id" = @StoreId
             """;
 
         return await connection.QuerySingleOrDefaultAsync<StoreAnalyticsDto>(sql, new { StoreId = storeId })

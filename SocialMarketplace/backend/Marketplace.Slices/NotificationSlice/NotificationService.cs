@@ -34,19 +34,19 @@ public class NotificationRepository : INotificationRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = "WHERE user_id = @UserId AND is_deleted = false";
-        if (unreadOnly == true) whereClause += " AND is_read = false";
+        var whereClause = @"WHERE ""UserId"" = @UserId AND ""IsDeleted"" = false";
+        if (unreadOnly == true) whereClause += @" AND ""IsRead"" = false";
 
         var totalCount = await connection.ExecuteScalarAsync<int>(
-            $"SELECT COUNT(*) FROM notifications {whereClause}", new { UserId = userId });
+            $"""SELECT COUNT(*) FROM "Notifications" {whereClause}""", new { UserId = userId });
 
         var notifications = await connection.QueryAsync<NotificationDto>($"""
-            SELECT id, type, title, message, image_url as ImageUrl, action_url as ActionUrl,
-                   action_type as ActionType, reference_id as ReferenceId, reference_type as ReferenceType,
-                   is_read as IsRead, priority, created_at as CreatedAt
-            FROM notifications
+            SELECT id, type, title, message, "ImageUrl", "ActionUrl",
+                   "ActionType", "ReferenceId", "ReferenceType",
+                   "IsRead", priority, "CreatedAt"
+            FROM "Notifications"
             {whereClause}
-            ORDER BY created_at DESC
+            ORDER BY "CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """, new { UserId = userId, PageSize = pageSize, Offset = (page - 1) * pageSize });
 
@@ -57,7 +57,7 @@ public class NotificationRepository : INotificationRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM notifications WHERE user_id = @UserId AND is_read = false AND is_deleted = false",
+            """SELECT COUNT(*) FROM "Notifications" WHERE "UserId" = @UserId AND "IsRead" = false AND "IsDeleted" = false""",
             new { UserId = userId });
     }
 
@@ -65,7 +65,7 @@ public class NotificationRepository : INotificationRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE notifications SET is_read = true, updated_at = NOW() WHERE id = @Id AND user_id = @UserId",
+            """UPDATE "Notifications" SET "IsRead" = true, "UpdatedAt" = NOW() WHERE id = @Id AND "UserId" = @UserId""",
             new { Id = id, UserId = userId }) > 0;
     }
 
@@ -73,7 +73,7 @@ public class NotificationRepository : INotificationRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE notifications SET is_read = true, updated_at = NOW() WHERE user_id = @UserId AND is_read = false",
+            """UPDATE "Notifications" SET "IsRead" = true, "UpdatedAt" = NOW() WHERE "UserId" = @UserId AND "IsRead" = false""",
             new { UserId = userId });
     }
 
@@ -82,8 +82,10 @@ public class NotificationRepository : INotificationRepository
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         var id = Guid.NewGuid();
         await connection.ExecuteAsync("""
-            INSERT INTO notifications (id, user_id, type, title, message, action_url, reference_id, is_read, channel, priority, created_at, is_deleted)
-            VALUES (@Id, @UserId, @Type::integer, @Title, @Message, @ActionUrl, @ReferenceId, false, 0, 2, NOW(), false)
+            INSERT INTO "Notifications" (id, "UserId", type, title, message, "ActionUrl", "ReferenceId",
+                                        "IsRead", "IsSent", priority, "CreatedAt", "IsDeleted")
+            VALUES (@Id, @UserId, @Type::integer, @Title, @Message, @ActionUrl, @ReferenceId,
+                   false, false, 2, NOW(), false)
             """, new { Id = id, UserId = userId, Type = type, Title = title, Message = message, ActionUrl = actionUrl, ReferenceId = referenceId });
         return id;
     }

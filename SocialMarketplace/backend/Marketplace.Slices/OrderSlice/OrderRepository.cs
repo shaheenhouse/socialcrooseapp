@@ -30,26 +30,26 @@ public class OrderRepository : IOrderRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT o.id, o.buyer_id as BuyerId, o.store_id as StoreId, o.seller_id as SellerId,
-                   o.order_number as OrderNumber, o.status, o.order_type as OrderType,
-                   o.subtotal, o.discount_amount as DiscountAmount, o.discount_code as DiscountCode,
-                   o.tax_amount as TaxAmount, o.shipping_amount as ShippingAmount,
-                   o.service_fee as ServiceFee, o.total_amount as TotalAmount, o.currency,
-                   o.platform_commission as PlatformCommission, o.seller_earnings as SellerEarnings,
-                   o.shipping_name as ShippingName, o.shipping_address as ShippingAddress,
-                   o.shipping_city as ShippingCity, o.shipping_country as ShippingCountry,
-                   o.tracking_number as TrackingNumber, o.tracking_url as TrackingUrl,
-                   o.shipped_at as ShippedAt, o.delivered_at as DeliveredAt,
-                   o.notes, o.cancelled_at as CancelledAt, o.cancellation_reason as CancellationReason,
-                   o.completed_at as CompletedAt, o.created_at as CreatedAt,
-                   b.first_name || ' ' || b.last_name as BuyerName, b.avatar_url as BuyerAvatarUrl,
-                   sl.first_name || ' ' || sl.last_name as SellerName,
-                   st.name as StoreName
+            SELECT o."Id", o."BuyerId", o."StoreId", o."SellerId",
+                   o."OrderNumber", o."Status", o."OrderType",
+                   o."Subtotal", o."DiscountAmount", o."DiscountCode",
+                   o."TaxAmount", o."ShippingAmount",
+                   o."ServiceFee", o."TotalAmount", o."Currency",
+                   o."PlatformCommission", o."SellerEarnings",
+                   o."ShippingName", o."ShippingAddress",
+                   o."ShippingCity", o."ShippingCountry",
+                   o."TrackingNumber", o."TrackingUrl",
+                   o."ShippedAt", o."DeliveredAt",
+                   o."Notes", o."CancelledAt", o."CancellationReason",
+                   o."CompletedAt", o."CreatedAt",
+                   b."FirstName" || ' ' || b."LastName" as BuyerName, b."AvatarUrl" as BuyerAvatarUrl,
+                   sl."FirstName" || ' ' || sl."LastName" as SellerName,
+                   st."Name" as StoreName
             FROM orders o
-            JOIN users b ON o.buyer_id = b.id
-            LEFT JOIN users sl ON o.seller_id = sl.id
-            LEFT JOIN stores st ON o.store_id = st.id
-            WHERE o.id = @Id AND o.is_deleted = false
+            JOIN users b ON o."BuyerId" = b."Id"
+            LEFT JOIN users sl ON o."SellerId" = sl."Id"
+            LEFT JOIN stores st ON o."StoreId" = st."Id"
+            WHERE o."Id" = @Id AND o."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<OrderDto>(sql, new { Id = id });
@@ -57,43 +57,43 @@ public class OrderRepository : IOrderRepository
 
     public async Task<(IEnumerable<OrderListDto> Orders, int TotalCount)> GetByBuyerAsync(Guid buyerId, int page, int pageSize, string? status = null)
     {
-        return await GetOrdersAsync("o.buyer_id = @UserId", buyerId, page, pageSize, status);
+        return await GetOrdersAsync("o.\"BuyerId\" = @UserId", buyerId, page, pageSize, status);
     }
 
     public async Task<(IEnumerable<OrderListDto> Orders, int TotalCount)> GetBySellerAsync(Guid sellerId, int page, int pageSize, string? status = null)
     {
-        return await GetOrdersAsync("o.seller_id = @UserId", sellerId, page, pageSize, status);
+        return await GetOrdersAsync("o.\"SellerId\" = @UserId", sellerId, page, pageSize, status);
     }
 
     public async Task<(IEnumerable<OrderListDto> Orders, int TotalCount)> GetByStoreAsync(Guid storeId, int page, int pageSize, string? status = null)
     {
-        return await GetOrdersAsync("o.store_id = @UserId", storeId, page, pageSize, status);
+        return await GetOrdersAsync("o.\"StoreId\" = @UserId", storeId, page, pageSize, status);
     }
 
     private async Task<(IEnumerable<OrderListDto> Orders, int TotalCount)> GetOrdersAsync(string userFilter, Guid userId, int page, int pageSize, string? status)
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = $"WHERE {userFilter} AND o.is_deleted = false";
+        var whereClause = $"WHERE {userFilter} AND o.\"IsDeleted\" = false";
         if (!string.IsNullOrEmpty(status))
-            whereClause += " AND o.status = @Status::integer";
+            whereClause += " AND o.\"Status\" = @Status::integer";
 
         var countSql = $"SELECT COUNT(*) FROM orders o {whereClause}";
         var totalCount = await connection.ExecuteScalarAsync<int>(countSql, new { UserId = userId, Status = status });
 
         var sql = $"""
-            SELECT o.id, o.order_number as OrderNumber, o.status, o.order_type as OrderType,
-                   o.total_amount as TotalAmount, o.currency, o.created_at as CreatedAt,
-                   o.shipped_at as ShippedAt, o.delivered_at as DeliveredAt,
-                   (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id AND oi.is_deleted = false) as ItemCount,
-                   COALESCE(st.name, sl.first_name || ' ' || sl.last_name) as SellerOrStoreName,
-                   b.first_name || ' ' || b.last_name as BuyerName
+            SELECT o."Id", o."OrderNumber", o."Status", o."OrderType",
+                   o."TotalAmount", o."Currency", o."CreatedAt",
+                   o."ShippedAt", o."DeliveredAt",
+                   (SELECT COUNT(*) FROM order_items oi WHERE oi."OrderId" = o."Id" AND oi."IsDeleted" = false) as ItemCount,
+                   COALESCE(st."Name", sl."FirstName" || ' ' || sl."LastName") as SellerOrStoreName,
+                   b."FirstName" || ' ' || b."LastName" as BuyerName
             FROM orders o
-            JOIN users b ON o.buyer_id = b.id
-            LEFT JOIN users sl ON o.seller_id = sl.id
-            LEFT JOIN stores st ON o.store_id = st.id
+            JOIN users b ON o."BuyerId" = b."Id"
+            LEFT JOIN users sl ON o."SellerId" = sl."Id"
+            LEFT JOIN stores st ON o."StoreId" = st."Id"
             {whereClause}
-            ORDER BY o.created_at DESC
+            ORDER BY o."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -116,17 +116,17 @@ public class OrderRepository : IOrderRepository
         var orderNumber = $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
         const string orderSql = """
-            INSERT INTO orders (id, buyer_id, store_id, seller_id, order_number, status, order_type,
-                               subtotal, discount_amount, tax_amount, shipping_amount, service_fee,
-                               total_amount, currency, notes,
-                               shipping_name, shipping_address, shipping_city, shipping_country, shipping_postal_code,
-                               created_at, is_deleted)
+            INSERT INTO orders ("Id", "BuyerId", "StoreId", "SellerId", "OrderNumber", "Status", "OrderType",
+                               "Subtotal", "DiscountAmount", "TaxAmount", "ShippingAmount", "ServiceFee",
+                               "TotalAmount", "Currency", "Notes",
+                               "ShippingName", "ShippingAddress", "ShippingCity", "ShippingCountry", "ShippingPostalCode",
+                               "IsGift", "CreatedAt", "IsDeleted")
             VALUES (@Id, @BuyerId, @StoreId, @SellerId, @OrderNumber, @Status, @OrderType,
                    @Subtotal, @DiscountAmount, @TaxAmount, @ShippingAmount, @ServiceFee,
                    @TotalAmount, @Currency, @Notes,
                    @ShippingName, @ShippingAddress, @ShippingCity, @ShippingCountry, @ShippingPostalCode,
-                   NOW(), false)
-            RETURNING id
+                   false, NOW(), false)
+            RETURNING "Id"
             """;
 
         var orderId = await connection.ExecuteScalarAsync<Guid>(orderSql, new
@@ -158,10 +158,12 @@ public class OrderRepository : IOrderRepository
             foreach (var item in dto.Items)
             {
                 await connection.ExecuteAsync("""
-                    INSERT INTO order_items (id, order_id, product_id, service_id, item_type, name,
-                                           quantity, unit_price, total_price, currency, image_url, created_at, is_deleted)
+                    INSERT INTO order_items ("Id", "OrderId", "ProductId", "ServiceId", "ItemType", "Name",
+                                           "Quantity", "UnitPrice", "TotalPrice", "Currency", "ImageUrl",
+                                           "IsDelivered", "IsRefunded", "CreatedAt", "IsDeleted")
                     VALUES (@Id, @OrderId, @ProductId, @ServiceId, @ItemType, @Name,
-                           @Quantity, @UnitPrice, @TotalPrice, @Currency, @ImageUrl, NOW(), false)
+                           @Quantity, @UnitPrice, @TotalPrice, @Currency, @ImageUrl,
+                           false, false, NOW(), false)
                     """, new
                 {
                     Id = Guid.NewGuid(),
@@ -188,16 +190,16 @@ public class OrderRepository : IOrderRepository
 
         var extraUpdates = status switch
         {
-            OrderStatus.Shipped => ", shipped_at = NOW()",
-            OrderStatus.Delivered => ", delivered_at = NOW()",
-            OrderStatus.Completed => ", completed_at = NOW()",
+            OrderStatus.Shipped => ", \"ShippedAt\" = NOW()",
+            OrderStatus.Delivered => ", \"DeliveredAt\" = NOW()",
+            OrderStatus.Completed => ", \"CompletedAt\" = NOW()",
             _ => ""
         };
 
         var sql = $"""
-            UPDATE orders SET status = @Status, internal_notes = COALESCE(@Notes, internal_notes),
-                   updated_at = NOW(){extraUpdates}
-            WHERE id = @Id AND is_deleted = false
+            UPDATE orders SET "Status" = @Status, "InternalNotes" = COALESCE(@Notes, "InternalNotes"),
+                   "UpdatedAt" = NOW(){extraUpdates}
+            WHERE "Id" = @Id AND "IsDeleted" = false
             """;
 
         return await connection.ExecuteAsync(sql, new { Id = id, Status = (int)status, Notes = notes }) > 0;
@@ -208,9 +210,9 @@ public class OrderRepository : IOrderRepository
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
 
         const string sql = """
-            UPDATE orders SET status = @Status, cancelled_at = NOW(), cancelled_by = @CancelledBy,
-                   cancellation_reason = @Reason, updated_at = NOW()
-            WHERE id = @Id AND is_deleted = false AND status IN (0, 1)
+            UPDATE orders SET "Status" = @Status, "CancelledAt" = NOW(), "CancelledBy" = @CancelledBy,
+                   "CancellationReason" = @Reason, "UpdatedAt" = NOW()
+            WHERE "Id" = @Id AND "IsDeleted" = false AND "Status" IN (0, 1)
             """;
 
         return await connection.ExecuteAsync(sql, new
@@ -227,14 +229,14 @@ public class OrderRepository : IOrderRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT oi.id, oi.product_id as ProductId, oi.service_id as ServiceId,
-                   oi.item_type as ItemType, oi.name, oi.sku, oi.quantity,
-                   oi.unit_price as UnitPrice, oi.discount_amount as DiscountAmount,
-                   oi.total_price as TotalPrice, oi.currency, oi.image_url as ImageUrl,
-                   oi.is_delivered as IsDelivered, oi.is_refunded as IsRefunded
+            SELECT oi."Id", oi."ProductId", oi."ServiceId",
+                   oi."ItemType", oi."Name", oi."Sku", oi."Quantity",
+                   oi."UnitPrice", oi."DiscountAmount",
+                   oi."TotalPrice", oi."Currency", oi."ImageUrl",
+                   oi."IsDelivered", oi."IsRefunded"
             FROM order_items oi
-            WHERE oi.order_id = @OrderId AND oi.is_deleted = false
-            ORDER BY oi.created_at
+            WHERE oi."OrderId" = @OrderId AND oi."IsDeleted" = false
+            ORDER BY oi."CreatedAt"
             """;
 
         return await connection.QueryAsync<OrderItemDto>(sql, new { OrderId = orderId });

@@ -32,23 +32,23 @@ public class ProjectRepository : IProjectRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT p.id, p.client_id as ClientId, p.freelancer_id as FreelancerId, p.category_id as CategoryId,
-                   p.title, p.slug, p.description, p.requirements, p.status,
-                   p.budget_type as BudgetType, p.budget_min as BudgetMin, p.budget_max as BudgetMax,
-                   p.agreed_budget as AgreedBudget, p.currency,
-                   p.estimated_duration_days as EstimatedDurationDays, p.deadline,
-                   p.required_skills as RequiredSkills, p.experience_level as ExperienceLevel,
-                   p.project_type as ProjectType, p.visibility, p.bid_count as BidCount,
-                   p.view_count as ViewCount, p.is_urgent as IsUrgent, p.is_featured as IsFeatured,
-                   p.tags, p.created_at as CreatedAt,
-                   c.first_name || ' ' || c.last_name as ClientName, c.avatar_url as ClientAvatarUrl,
-                   f.first_name || ' ' || f.last_name as FreelancerName,
-                   cat.name as CategoryName
+            SELECT p."Id", p."ClientId", p."FreelancerId", p."CategoryId",
+                   p."Title", p."Slug", p."Description", p."Requirements", p."Status",
+                   p."BudgetType", p."BudgetMin", p."BudgetMax",
+                   p."AgreedBudget", p."Currency",
+                   p."EstimatedDurationDays", p."Deadline",
+                   p."RequiredSkills", p."ExperienceLevel",
+                   p."ProjectType", p."Visibility", p."BidCount",
+                   p."ViewCount", p."IsUrgent", p."IsFeatured",
+                   p."Tags", p."CreatedAt",
+                   c."FirstName" || ' ' || c."LastName" as ClientName, c."AvatarUrl" as ClientAvatarUrl,
+                   f."FirstName" || ' ' || f."LastName" as FreelancerName,
+                   cat."Name" as CategoryName
             FROM projects p
-            JOIN users c ON p.client_id = c.id
-            LEFT JOIN users f ON p.freelancer_id = f.id
-            JOIN categories cat ON p.category_id = cat.id
-            WHERE p.id = @Id AND p.is_deleted = false
+            JOIN users c ON p."ClientId" = c."Id"
+            LEFT JOIN users f ON p."FreelancerId" = f."Id"
+            JOIN "Categories" cat ON p."CategoryId" = cat."Id"
+            WHERE p."Id" = @Id AND p."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ProjectDto>(sql, new { Id = id });
@@ -58,32 +58,32 @@ public class ProjectRepository : IProjectRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = "WHERE p.is_deleted = false";
+        var whereClause = "WHERE p.\"IsDeleted\" = false";
         var parameters = new DynamicParameters();
 
         if (!string.IsNullOrEmpty(query.Search))
         {
-            whereClause += " AND (p.title ILIKE @Search OR p.description ILIKE @Search OR p.tags ILIKE @Search)";
+            whereClause += " AND (p.\"Title\" ILIKE @Search OR p.\"Description\" ILIKE @Search OR p.\"Tags\" ILIKE @Search)";
             parameters.Add("Search", $"%{query.Search}%");
         }
         if (!string.IsNullOrEmpty(query.Status))
         {
-            whereClause += " AND p.status = @Status::integer";
+            whereClause += " AND p.\"Status\" = @Status::integer";
             parameters.Add("Status", query.Status);
         }
         if (query.CategoryId.HasValue)
         {
-            whereClause += " AND p.category_id = @CategoryId";
+            whereClause += " AND p.\"CategoryId\" = @CategoryId";
             parameters.Add("CategoryId", query.CategoryId);
         }
         if (query.MinBudget.HasValue)
         {
-            whereClause += " AND p.budget_max >= @MinBudget";
+            whereClause += " AND p.\"BudgetMax\" >= @MinBudget";
             parameters.Add("MinBudget", query.MinBudget);
         }
         if (query.MaxBudget.HasValue)
         {
-            whereClause += " AND p.budget_min <= @MaxBudget";
+            whereClause += " AND p.\"BudgetMin\" <= @MaxBudget";
             parameters.Add("MaxBudget", query.MaxBudget);
         }
 
@@ -94,19 +94,19 @@ public class ProjectRepository : IProjectRepository
         parameters.Add("Offset", (query.Page - 1) * query.PageSize);
 
         var sql = $"""
-            SELECT p.id, p.title, p.slug, p.status,
-                   p.budget_type as BudgetType, p.budget_min as BudgetMin, p.budget_max as BudgetMax,
-                   p.currency, p.deadline, p.bid_count as BidCount,
-                   p.is_urgent as IsUrgent, p.is_featured as IsFeatured,
-                   p.experience_level as ExperienceLevel, p.required_skills as RequiredSkills,
-                   p.created_at as CreatedAt,
-                   c.first_name || ' ' || c.last_name as ClientName,
-                   cat.name as CategoryName
+            SELECT p."Id", p."Title", p."Slug", p."Status",
+                   p."BudgetType", p."BudgetMin", p."BudgetMax",
+                   p."Currency", p."Deadline", p."BidCount",
+                   p."IsUrgent", p."IsFeatured",
+                   p."ExperienceLevel", p."RequiredSkills",
+                   p."CreatedAt",
+                   c."FirstName" || ' ' || c."LastName" as ClientName,
+                   cat."Name" as CategoryName
             FROM projects p
-            JOIN users c ON p.client_id = c.id
-            JOIN categories cat ON p.category_id = cat.id
+            JOIN users c ON p."ClientId" = c."Id"
+            JOIN "Categories" cat ON p."CategoryId" = cat."Id"
             {whereClause}
-            ORDER BY p.is_featured DESC, p.is_urgent DESC, p.created_at DESC
+            ORDER BY p."IsFeatured" DESC, p."IsUrgent" DESC, p."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -119,19 +119,19 @@ public class ProjectRepository : IProjectRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         var totalCount = await connection.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM projects WHERE client_id = @ClientId AND is_deleted = false",
+            "SELECT COUNT(*) FROM projects WHERE \"ClientId\" = @ClientId AND \"IsDeleted\" = false",
             new { ClientId = clientId });
 
         var sql = """
-            SELECT p.id, p.title, p.slug, p.status,
-                   p.budget_type as BudgetType, p.budget_min as BudgetMin, p.budget_max as BudgetMax,
-                   p.currency, p.deadline, p.bid_count as BidCount,
-                   p.is_urgent as IsUrgent, p.created_at as CreatedAt,
-                   cat.name as CategoryName
+            SELECT p."Id", p."Title", p."Slug", p."Status",
+                   p."BudgetType", p."BudgetMin", p."BudgetMax",
+                   p."Currency", p."Deadline", p."BidCount",
+                   p."IsUrgent", p."CreatedAt",
+                   cat."Name" as CategoryName
             FROM projects p
-            JOIN categories cat ON p.category_id = cat.id
-            WHERE p.client_id = @ClientId AND p.is_deleted = false
-            ORDER BY p.created_at DESC
+            JOIN "Categories" cat ON p."CategoryId" = cat."Id"
+            WHERE p."ClientId" = @ClientId AND p."IsDeleted" = false
+            ORDER BY p."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -150,20 +150,20 @@ public class ProjectRepository : IProjectRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         var totalCount = await connection.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM projects WHERE freelancer_id = @FreelancerId AND is_deleted = false",
+            "SELECT COUNT(*) FROM projects WHERE \"FreelancerId\" = @FreelancerId AND \"IsDeleted\" = false",
             new { FreelancerId = freelancerId });
 
         var sql = """
-            SELECT p.id, p.title, p.slug, p.status,
-                   p.budget_type as BudgetType, p.budget_min as BudgetMin, p.budget_max as BudgetMax,
-                   p.currency, p.deadline, p.bid_count as BidCount, p.created_at as CreatedAt,
-                   c.first_name || ' ' || c.last_name as ClientName,
-                   cat.name as CategoryName
+            SELECT p."Id", p."Title", p."Slug", p."Status",
+                   p."BudgetType", p."BudgetMin", p."BudgetMax",
+                   p."Currency", p."Deadline", p."BidCount", p."CreatedAt",
+                   c."FirstName" || ' ' || c."LastName" as ClientName,
+                   cat."Name" as CategoryName
             FROM projects p
-            JOIN users c ON p.client_id = c.id
-            JOIN categories cat ON p.category_id = cat.id
-            WHERE p.freelancer_id = @FreelancerId AND p.is_deleted = false
-            ORDER BY p.created_at DESC
+            JOIN users c ON p."ClientId" = c."Id"
+            JOIN "Categories" cat ON p."CategoryId" = cat."Id"
+            WHERE p."FreelancerId" = @FreelancerId AND p."IsDeleted" = false
+            ORDER BY p."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -185,15 +185,17 @@ public class ProjectRepository : IProjectRepository
         var slug = dto.Title.ToLower().Replace(" ", "-").Replace("'", "").Replace("\"", "");
 
         const string sql = """
-            INSERT INTO projects (id, client_id, category_id, title, slug, description, requirements,
-                                status, budget_type, budget_min, budget_max, currency,
-                                estimated_duration_days, deadline, required_skills, experience_level,
-                                project_type, visibility, is_urgent, tags, created_at, is_deleted)
+            INSERT INTO projects ("Id", "ClientId", "CategoryId", "Title", "Slug", "Description", "Requirements",
+                                "Status", "BudgetType", "BudgetMin", "BudgetMax", "Currency",
+                                "EstimatedDurationDays", "Deadline", "RequiredSkills", "ExperienceLevel",
+                                "ProjectType", "Visibility", "BidCount", "ViewCount",
+                                "IsUrgent", "IsFeatured", "Tags", "CreatedAt", "IsDeleted")
             VALUES (@Id, @ClientId, @CategoryId, @Title, @Slug, @Description, @Requirements,
                    @Status, @BudgetType, @BudgetMin, @BudgetMax, @Currency,
                    @EstimatedDurationDays, @Deadline, @RequiredSkills, @ExperienceLevel,
-                   @ProjectType, @Visibility, @IsUrgent, @Tags, NOW(), false)
-            RETURNING id
+                   @ProjectType, @Visibility, 0, 0,
+                   @IsUrgent, false, @Tags, NOW(), false)
+            RETURNING "Id"
             """;
 
         return await connection.ExecuteScalarAsync<Guid>(sql, new
@@ -229,18 +231,18 @@ public class ProjectRepository : IProjectRepository
         var parameters = new DynamicParameters();
         parameters.Add("Id", id);
 
-        if (dto.Title != null) { updates.Add("title = @Title"); parameters.Add("Title", dto.Title); }
-        if (dto.Description != null) { updates.Add("description = @Description"); parameters.Add("Description", dto.Description); }
-        if (dto.Requirements != null) { updates.Add("requirements = @Requirements"); parameters.Add("Requirements", dto.Requirements); }
-        if (dto.Status.HasValue) { updates.Add("status = @Status"); parameters.Add("Status", dto.Status); }
-        if (dto.BudgetMin.HasValue) { updates.Add("budget_min = @BudgetMin"); parameters.Add("BudgetMin", dto.BudgetMin); }
-        if (dto.BudgetMax.HasValue) { updates.Add("budget_max = @BudgetMax"); parameters.Add("BudgetMax", dto.BudgetMax); }
-        if (dto.Deadline.HasValue) { updates.Add("deadline = @Deadline"); parameters.Add("Deadline", dto.Deadline); }
+        if (dto.Title != null) { updates.Add("\"Title\" = @Title"); parameters.Add("Title", dto.Title); }
+        if (dto.Description != null) { updates.Add("\"Description\" = @Description"); parameters.Add("Description", dto.Description); }
+        if (dto.Requirements != null) { updates.Add("\"Requirements\" = @Requirements"); parameters.Add("Requirements", dto.Requirements); }
+        if (dto.Status.HasValue) { updates.Add("\"Status\" = @Status"); parameters.Add("Status", dto.Status); }
+        if (dto.BudgetMin.HasValue) { updates.Add("\"BudgetMin\" = @BudgetMin"); parameters.Add("BudgetMin", dto.BudgetMin); }
+        if (dto.BudgetMax.HasValue) { updates.Add("\"BudgetMax\" = @BudgetMax"); parameters.Add("BudgetMax", dto.BudgetMax); }
+        if (dto.Deadline.HasValue) { updates.Add("\"Deadline\" = @Deadline"); parameters.Add("Deadline", dto.Deadline); }
 
         if (updates.Count == 0) return true;
-        updates.Add("updated_at = NOW()");
+        updates.Add("\"UpdatedAt\" = NOW()");
 
-        var sql = $"UPDATE projects SET {string.Join(", ", updates)} WHERE id = @Id AND is_deleted = false";
+        var sql = $"UPDATE projects SET {string.Join(", ", updates)} WHERE \"Id\" = @Id AND \"IsDeleted\" = false";
         return await connection.ExecuteAsync(sql, parameters) > 0;
     }
 
@@ -249,19 +251,19 @@ public class ProjectRepository : IProjectRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT b.id, b.project_id as ProjectId, b.freelancer_id as FreelancerId,
-                   b.amount, b.currency, b.delivery_days as DeliveryDays,
-                   b.proposal, b.status, b.is_shortlisted as IsShortlisted,
-                   b.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as FreelancerName,
-                   u.avatar_url as FreelancerAvatarUrl,
-                   up.hourly_rate as FreelancerHourlyRate,
-                   u.average_rating as FreelancerRating
+            SELECT b."Id", b."ProjectId", b."FreelancerId",
+                   b."Amount", b."Currency", b."DeliveryDays",
+                   b."Proposal", b."Status", b."IsShortlisted",
+                   b."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as FreelancerName,
+                   u."AvatarUrl" as FreelancerAvatarUrl,
+                   up."HourlyRate" as FreelancerHourlyRate,
+                   u."AverageRating" as FreelancerRating
             FROM project_bids b
-            JOIN users u ON b.freelancer_id = u.id
-            LEFT JOIN user_profiles up ON u.id = up.user_id
-            WHERE b.project_id = @ProjectId AND b.is_deleted = false
-            ORDER BY b.is_shortlisted DESC, b.created_at DESC
+            JOIN users u ON b."FreelancerId" = u."Id"
+            LEFT JOIN user_profiles up ON u."Id" = up."UserId"
+            WHERE b."ProjectId" = @ProjectId AND b."IsDeleted" = false
+            ORDER BY b."IsShortlisted" DESC, b."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -280,10 +282,10 @@ public class ProjectRepository : IProjectRepository
         var id = Guid.NewGuid();
 
         await connection.ExecuteAsync("""
-            INSERT INTO project_bids (id, project_id, freelancer_id, amount, currency, delivery_days,
-                                     proposal, status, created_at, is_deleted)
+            INSERT INTO project_bids ("Id", "ProjectId", "FreelancerId", "Amount", "Currency", "DeliveryDays",
+                                     "Proposal", "Status", "IsShortlisted", "CreatedAt", "IsDeleted")
             VALUES (@Id, @ProjectId, @FreelancerId, @Amount, @Currency, @DeliveryDays,
-                   @Proposal, @Status, NOW(), false)
+                   @Proposal, @Status, false, NOW(), false)
             """, new
         {
             Id = id,
@@ -297,7 +299,7 @@ public class ProjectRepository : IProjectRepository
         });
 
         await connection.ExecuteAsync(
-            "UPDATE projects SET bid_count = bid_count + 1, updated_at = NOW() WHERE id = @ProjectId",
+            "UPDATE projects SET \"BidCount\" = \"BidCount\" + 1, \"UpdatedAt\" = NOW() WHERE \"Id\" = @ProjectId",
             new { dto.ProjectId });
 
         return id;
@@ -308,12 +310,12 @@ public class ProjectRepository : IProjectRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT id, project_id as ProjectId, title, description, amount, currency,
-                   due_date as DueDate, status, is_funded as IsFunded, is_released as IsReleased,
-                   created_at as CreatedAt
+            SELECT "Id", "ProjectId", "Title", "Description", "Amount", "Currency",
+                   "DueDate", "Status", "IsFunded", "IsReleased",
+                   "CreatedAt"
             FROM project_milestones
-            WHERE project_id = @ProjectId AND is_deleted = false
-            ORDER BY due_date
+            WHERE "ProjectId" = @ProjectId AND "IsDeleted" = false
+            ORDER BY "DueDate"
             """;
 
         return await connection.QueryAsync<ProjectMilestoneDto>(sql, new { ProjectId = projectId });
@@ -326,10 +328,12 @@ public class ProjectRepository : IProjectRepository
         var id = Guid.NewGuid();
 
         await connection.ExecuteAsync("""
-            INSERT INTO project_milestones (id, project_id, title, description, amount, currency,
-                                           due_date, status, created_at, is_deleted)
+            INSERT INTO project_milestones ("Id", "ProjectId", "Title", "Description", "Amount", "Currency",
+                                           "DueDate", "Status", "SortOrder", "IsFunded", "IsReleased",
+                                           "CreatedAt", "IsDeleted")
             VALUES (@Id, @ProjectId, @Title, @Description, @Amount, @Currency,
-                   @DueDate, @Status, NOW(), false)
+                   @DueDate, @Status, 0, false, false,
+                   NOW(), false)
             """, new
         {
             Id = id,

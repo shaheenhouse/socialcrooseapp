@@ -40,21 +40,21 @@ public class ReviewRepository : IReviewRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QuerySingleOrDefaultAsync<ReviewDto>("""
-            SELECT r.id, r.reviewer_id as ReviewerId, r.review_type as ReviewType,
+            SELECT r.id, r."ReviewerId", r."ReviewType",
                    r.rating, r.title, r.content, r.pros, r.cons,
-                   r.is_verified_purchase as IsVerifiedPurchase,
-                   r.helpful_count as HelpfulCount, r.unhelpful_count as UnhelpfulCount,
-                   r.quality_rating as QualityRating, r.communication_rating as CommunicationRating,
-                   r.value_rating as ValueRating, r.delivery_rating as DeliveryRating,
-                   r.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as ReviewerName, u.avatar_url as ReviewerAvatarUrl,
-                   rr.content as ResponseContent, rr.created_at as ResponseCreatedAt,
-                   ru.first_name || ' ' || ru.last_name as ResponderName
+                   r."IsVerifiedPurchase",
+                   r."HelpfulCount", r."UnhelpfulCount",
+                   r."QualityRating", r."CommunicationRating",
+                   r."ValueRating", r."DeliveryRating",
+                   r."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as ReviewerName, u."AvatarUrl" as ReviewerAvatarUrl,
+                   rr.content as ResponseContent, rr."CreatedAt" as ResponseCreatedAt,
+                   ru."FirstName" || ' ' || ru."LastName" as ResponderName
             FROM reviews r
-            JOIN users u ON r.reviewer_id = u.id
-            LEFT JOIN review_responses rr ON r.id = rr.review_id AND rr.is_deleted = false
-            LEFT JOIN users ru ON rr.responder_id = ru.id
-            WHERE r.id = @Id AND r.is_deleted = false
+            JOIN users u ON r."ReviewerId" = u.id
+            LEFT JOIN review_responses rr ON r.id = rr."ReviewId" AND rr."IsDeleted" = false
+            LEFT JOIN users ru ON rr."ResponderId" = ru.id
+            WHERE r.id = @Id AND r."IsDeleted" = false
             """, new { Id = id });
     }
 
@@ -64,27 +64,27 @@ public class ReviewRepository : IReviewRepository
 
         var entityColumn = entityType.ToLower() switch
         {
-            "product" => "product_id",
-            "service" => "service_id",
-            "store" => "store_id",
-            "seller" or "user" => "reviewee_id",
-            "project" => "project_id",
-            _ => "product_id"
+            "product" => @"""ProductId""",
+            "service" => @"""ServiceId""",
+            "store" => @"""StoreId""",
+            "seller" or "user" => @"""RevieweeId""",
+            "project" => @"""ProjectId""",
+            _ => @"""ProductId"""
         };
 
-        var countSql = $"SELECT COUNT(*) FROM reviews WHERE {entityColumn} = @EntityId AND is_deleted = false";
+        var countSql = $"""SELECT COUNT(*) FROM reviews WHERE {entityColumn} = @EntityId AND "IsDeleted" = false""";
         var totalCount = await connection.ExecuteScalarAsync<int>(countSql, new { EntityId = entityId });
 
         var sql = $"""
             SELECT r.id, r.rating, r.title, r.content, r.pros, r.cons,
-                   r.is_verified_purchase as IsVerifiedPurchase,
-                   r.helpful_count as HelpfulCount, r.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as ReviewerName, u.avatar_url as ReviewerAvatarUrl,
-                   EXISTS(SELECT 1 FROM review_responses rr WHERE rr.review_id = r.id AND rr.is_deleted = false) as HasResponse
+                   r."IsVerifiedPurchase",
+                   r."HelpfulCount", r."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as ReviewerName, u."AvatarUrl" as ReviewerAvatarUrl,
+                   EXISTS(SELECT 1 FROM review_responses rr WHERE rr."ReviewId" = r.id AND rr."IsDeleted" = false) as HasResponse
             FROM reviews r
-            JOIN users u ON r.reviewer_id = u.id
-            WHERE r.{entityColumn} = @EntityId AND r.is_deleted = false
-            ORDER BY r.created_at DESC
+            JOIN users u ON r."ReviewerId" = u.id
+            WHERE r.{entityColumn} = @EntityId AND r."IsDeleted" = false
+            ORDER BY r."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -104,12 +104,16 @@ public class ReviewRepository : IReviewRepository
         var id = Guid.NewGuid();
 
         await connection.ExecuteAsync("""
-            INSERT INTO reviews (id, reviewer_id, reviewee_id, order_id, product_id, service_id, store_id, project_id,
-                               review_type, rating, title, content, pros, cons, is_verified_purchase,
-                               quality_rating, communication_rating, value_rating, delivery_rating,
-                               created_at, is_deleted)
+            INSERT INTO reviews (id, "ReviewerId", "RevieweeId", "OrderId", "ProductId", "ServiceId", "StoreId", "ProjectId",
+                               "ReviewType", rating, title, content, pros, cons, "IsVerifiedPurchase",
+                               "IsRecommended", "HelpfulCount", "UnhelpfulCount", "ReportCount",
+                               "IsFlagged", "IsHidden", "HasResponse",
+                               "QualityRating", "CommunicationRating", "ValueRating", "DeliveryRating",
+                               "CreatedAt", "IsDeleted")
             VALUES (@Id, @ReviewerId, @RevieweeId, @OrderId, @ProductId, @ServiceId, @StoreId, @ProjectId,
                    @ReviewType, @Rating, @Title, @Content, @Pros, @Cons, @IsVerifiedPurchase,
+                   true, 0, 0, 0,
+                   false, false, false,
                    @QualityRating, @CommunicationRating, @ValueRating, @DeliveryRating,
                    NOW(), false)
             """, new
@@ -142,7 +146,7 @@ public class ReviewRepository : IReviewRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE reviews SET content = @Content, rating = @Rating, updated_at = NOW() WHERE id = @Id AND is_deleted = false",
+            """UPDATE reviews SET content = @Content, rating = @Rating, "UpdatedAt" = NOW() WHERE id = @Id AND "IsDeleted" = false""",
             new { Id = id, Content = content, Rating = rating }) > 0;
     }
 
@@ -150,7 +154,7 @@ public class ReviewRepository : IReviewRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE reviews SET is_deleted = true, deleted_at = NOW() WHERE id = @Id", new { Id = id }) > 0;
+            """UPDATE reviews SET "IsDeleted" = true, deleted_at = NOW() WHERE id = @Id""", new { Id = id }) > 0;
     }
 
     public async Task<Guid> CreateResponseAsync(Guid reviewId, Guid responderId, string content)
@@ -158,8 +162,8 @@ public class ReviewRepository : IReviewRepository
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         var id = Guid.NewGuid();
         await connection.ExecuteAsync("""
-            INSERT INTO review_responses (id, review_id, responder_id, content, created_at, is_deleted)
-            VALUES (@Id, @ReviewId, @ResponderId, @Content, NOW(), false)
+            INSERT INTO review_responses (id, "ReviewId", "ResponderId", content, "IsHidden", "CreatedAt", "IsDeleted")
+            VALUES (@Id, @ReviewId, @ResponderId, @Content, false, NOW(), false)
             """, new { Id = id, ReviewId = reviewId, ResponderId = responderId, Content = content });
         return id;
     }
@@ -169,11 +173,11 @@ public class ReviewRepository : IReviewRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         var entityColumn = entityType.ToLower() switch
         {
-            "product" => "product_id",
-            "service" => "service_id",
-            "store" => "store_id",
-            "seller" or "user" => "reviewee_id",
-            _ => "product_id"
+            "product" => @"""ProductId""",
+            "service" => @"""ServiceId""",
+            "store" => @"""StoreId""",
+            "seller" or "user" => @"""RevieweeId""",
+            _ => @"""ProductId"""
         };
 
         return await connection.QuerySingleOrDefaultAsync<ReviewStatsDto>($"""
@@ -184,7 +188,7 @@ public class ReviewRepository : IReviewRepository
                    COUNT(CASE WHEN rating = 3 THEN 1 END) as ThreeStarCount,
                    COUNT(CASE WHEN rating = 2 THEN 1 END) as TwoStarCount,
                    COUNT(CASE WHEN rating = 1 THEN 1 END) as OneStarCount
-            FROM reviews WHERE {entityColumn} = @EntityId AND is_deleted = false
+            FROM reviews WHERE {entityColumn} = @EntityId AND "IsDeleted" = false
             """, new { EntityId = entityId }) ?? new ReviewStatsDto();
     }
 }

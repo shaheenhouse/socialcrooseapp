@@ -18,16 +18,16 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
         const string sql = """
-            SELECT id, email, username, first_name as FirstName, last_name as LastName,
-                   phone_number as PhoneNumber, avatar_url as AvatarUrl, bio, status,
-                   email_verified as EmailVerified, phone_verified as PhoneVerified,
-                   preferred_language as PreferredLanguage, time_zone as TimeZone,
-                   currency, country, city, reputation_score as ReputationScore,
-                   average_rating as AverageRating, total_reviews as TotalReviews,
-                   is_verified_seller as IsVerifiedSeller, is_verified_buyer as IsVerifiedBuyer,
-                   created_at as CreatedAt
+            SELECT "Id", "Email", "Username", "FirstName", "LastName",
+                   "PhoneNumber", "AvatarUrl", "Bio", "Status",
+                   "EmailVerified", "PhoneVerified",
+                   "PreferredLanguage", "TimeZone",
+                   "Currency", "Country", "City", "ReputationScore",
+                   "AverageRating", "TotalReviews",
+                   "IsVerifiedSeller", "IsVerifiedBuyer",
+                   "CreatedAt"
             FROM users
-            WHERE id = @Id AND is_deleted = false
+            WHERE "Id" = @Id AND "IsDeleted" = false
             """;
         
         return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, new { Id = id });
@@ -38,16 +38,16 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
         const string sql = """
-            SELECT id, email, username, first_name as FirstName, last_name as LastName,
-                   phone_number as PhoneNumber, avatar_url as AvatarUrl, bio, status,
-                   email_verified as EmailVerified, phone_verified as PhoneVerified,
-                   preferred_language as PreferredLanguage, time_zone as TimeZone,
-                   currency, country, city, reputation_score as ReputationScore,
-                   average_rating as AverageRating, total_reviews as TotalReviews,
-                   is_verified_seller as IsVerifiedSeller, is_verified_buyer as IsVerifiedBuyer,
-                   created_at as CreatedAt
+            SELECT "Id", "Email", "Username", "FirstName", "LastName",
+                   "PhoneNumber", "AvatarUrl", "Bio", "Status",
+                   "EmailVerified", "PhoneVerified",
+                   "PreferredLanguage", "TimeZone",
+                   "Currency", "Country", "City", "ReputationScore",
+                   "AverageRating", "TotalReviews",
+                   "IsVerifiedSeller", "IsVerifiedBuyer",
+                   "CreatedAt"
             FROM users
-            WHERE LOWER(email) = LOWER(@Email) AND is_deleted = false
+            WHERE LOWER("Email") = LOWER(@Email) AND "IsDeleted" = false
             """;
         
         return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, new { Email = email });
@@ -58,16 +58,16 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
         const string sql = """
-            SELECT id, email, username, first_name as FirstName, last_name as LastName,
-                   phone_number as PhoneNumber, avatar_url as AvatarUrl, bio, status,
-                   email_verified as EmailVerified, phone_verified as PhoneVerified,
-                   preferred_language as PreferredLanguage, time_zone as TimeZone,
-                   currency, country, city, reputation_score as ReputationScore,
-                   average_rating as AverageRating, total_reviews as TotalReviews,
-                   is_verified_seller as IsVerifiedSeller, is_verified_buyer as IsVerifiedBuyer,
-                   created_at as CreatedAt
+            SELECT "Id", "Email", "Username", "FirstName", "LastName",
+                   "PhoneNumber", "AvatarUrl", "Bio", "Status",
+                   "EmailVerified", "PhoneVerified",
+                   "PreferredLanguage", "TimeZone",
+                   "Currency", "Country", "City", "ReputationScore",
+                   "AverageRating", "TotalReviews",
+                   "IsVerifiedSeller", "IsVerifiedBuyer",
+                   "CreatedAt"
             FROM users
-            WHERE LOWER(username) = LOWER(@Username) AND is_deleted = false
+            WHERE LOWER("Username") = LOWER(@Username) AND "IsDeleted" = false
             """;
         
         return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, new { Username = username });
@@ -77,26 +77,26 @@ public class UserRepository : IUserRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
-        var whereClause = "WHERE is_deleted = false";
+        var whereClause = """WHERE "IsDeleted" = false""";
         if (!string.IsNullOrEmpty(search))
         {
-            whereClause += " AND (LOWER(username) LIKE LOWER(@Search) OR LOWER(first_name) LIKE LOWER(@Search) OR LOWER(last_name) LIKE LOWER(@Search) OR LOWER(email) LIKE LOWER(@Search))";
+            whereClause += """ AND (LOWER("Username") LIKE LOWER(@Search) OR LOWER("FirstName") LIKE LOWER(@Search) OR LOWER("LastName") LIKE LOWER(@Search) OR LOWER("Email") LIKE LOWER(@Search))""";
         }
         if (!string.IsNullOrEmpty(status))
         {
-            whereClause += " AND status = @Status";
+            whereClause += """ AND "Status" = @Status""";
         }
 
         var countSql = $"SELECT COUNT(*) FROM users {whereClause}";
         var totalCount = await connection.ExecuteScalarAsync<int>(countSql, new { Search = $"%{search}%", Status = status });
 
         var sql = $"""
-            SELECT id, username, first_name as FirstName, last_name as LastName,
-                   avatar_url as AvatarUrl, status, average_rating as AverageRating,
-                   total_reviews as TotalReviews, is_verified_seller as IsVerifiedSeller
+            SELECT "Id", "Username", "FirstName", "LastName",
+                   "AvatarUrl", "Status", "AverageRating",
+                   "TotalReviews", "IsVerifiedSeller"
             FROM users
             {whereClause}
-            ORDER BY created_at DESC
+            ORDER BY "CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -117,11 +117,19 @@ public class UserRepository : IUserRepository
         
         var id = Guid.NewGuid();
         const string sql = """
-            INSERT INTO users (id, email, username, password_hash, first_name, last_name, phone_number,
-                              status, created_at, is_deleted)
+            INSERT INTO users ("Id", "Email", "Username", "PasswordHash", "FirstName", "LastName", "PhoneNumber",
+                              "Status", "EmailVerified", "PhoneVerified", "TwoFactorEnabled",
+                              "FailedLoginAttempts", "PreferredLanguage",
+                              "ReputationScore", "TotalReviews", "AverageRating",
+                              "IsVerifiedSeller", "IsVerifiedBuyer",
+                              "CreatedAt", "IsDeleted")
             VALUES (@Id, @Email, @Username, @PasswordHash, @FirstName, @LastName, @PhoneNumber,
-                   1, NOW(), false)
-            RETURNING id
+                   1, false, false, false,
+                   0, 'en',
+                   0, 0, 0,
+                   false, false,
+                   NOW(), false)
+            RETURNING "Id"
             """;
         
         return await connection.ExecuteScalarAsync<Guid>(sql, new
@@ -144,23 +152,23 @@ public class UserRepository : IUserRepository
         var parameters = new DynamicParameters();
         parameters.Add("Id", id);
 
-        if (dto.FirstName != null) { updates.Add("first_name = @FirstName"); parameters.Add("FirstName", dto.FirstName); }
-        if (dto.LastName != null) { updates.Add("last_name = @LastName"); parameters.Add("LastName", dto.LastName); }
-        if (dto.PhoneNumber != null) { updates.Add("phone_number = @PhoneNumber"); parameters.Add("PhoneNumber", dto.PhoneNumber); }
-        if (dto.Bio != null) { updates.Add("bio = @Bio"); parameters.Add("Bio", dto.Bio); }
-        if (dto.AvatarUrl != null) { updates.Add("avatar_url = @AvatarUrl"); parameters.Add("AvatarUrl", dto.AvatarUrl); }
-        if (dto.PreferredLanguage != null) { updates.Add("preferred_language = @PreferredLanguage"); parameters.Add("PreferredLanguage", dto.PreferredLanguage); }
-        if (dto.TimeZone != null) { updates.Add("time_zone = @TimeZone"); parameters.Add("TimeZone", dto.TimeZone); }
-        if (dto.Currency != null) { updates.Add("currency = @Currency"); parameters.Add("Currency", dto.Currency); }
-        if (dto.Country != null) { updates.Add("country = @Country"); parameters.Add("Country", dto.Country); }
-        if (dto.City != null) { updates.Add("city = @City"); parameters.Add("City", dto.City); }
-        if (dto.Address != null) { updates.Add("address = @Address"); parameters.Add("Address", dto.Address); }
+        if (dto.FirstName != null) { updates.Add("\"FirstName\" = @FirstName"); parameters.Add("FirstName", dto.FirstName); }
+        if (dto.LastName != null) { updates.Add("\"LastName\" = @LastName"); parameters.Add("LastName", dto.LastName); }
+        if (dto.PhoneNumber != null) { updates.Add("\"PhoneNumber\" = @PhoneNumber"); parameters.Add("PhoneNumber", dto.PhoneNumber); }
+        if (dto.Bio != null) { updates.Add("\"Bio\" = @Bio"); parameters.Add("Bio", dto.Bio); }
+        if (dto.AvatarUrl != null) { updates.Add("\"AvatarUrl\" = @AvatarUrl"); parameters.Add("AvatarUrl", dto.AvatarUrl); }
+        if (dto.PreferredLanguage != null) { updates.Add("\"PreferredLanguage\" = @PreferredLanguage"); parameters.Add("PreferredLanguage", dto.PreferredLanguage); }
+        if (dto.TimeZone != null) { updates.Add("\"TimeZone\" = @TimeZone"); parameters.Add("TimeZone", dto.TimeZone); }
+        if (dto.Currency != null) { updates.Add("\"Currency\" = @Currency"); parameters.Add("Currency", dto.Currency); }
+        if (dto.Country != null) { updates.Add("\"Country\" = @Country"); parameters.Add("Country", dto.Country); }
+        if (dto.City != null) { updates.Add("\"City\" = @City"); parameters.Add("City", dto.City); }
+        if (dto.Address != null) { updates.Add("\"Address\" = @Address"); parameters.Add("Address", dto.Address); }
 
         if (updates.Count == 0) return true;
 
-        updates.Add("updated_at = NOW()");
+        updates.Add("\"UpdatedAt\" = NOW()");
 
-        var sql = $"UPDATE users SET {string.Join(", ", updates)} WHERE id = @Id AND is_deleted = false";
+        var sql = $"""UPDATE users SET {string.Join(", ", updates)} WHERE "Id" = @Id AND "IsDeleted" = false""";
         var rowsAffected = await connection.ExecuteAsync(sql, parameters);
         return rowsAffected > 0;
     }
@@ -169,7 +177,7 @@ public class UserRepository : IUserRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         
-        const string sql = "UPDATE users SET is_deleted = true, deleted_at = NOW() WHERE id = @Id";
+        const string sql = """UPDATE users SET "IsDeleted" = true, "DeletedAt" = NOW() WHERE "Id" = @Id""";
         var rowsAffected = await connection.ExecuteAsync(sql, new { Id = id });
         return rowsAffected > 0;
     }
@@ -180,8 +188,8 @@ public class UserRepository : IUserRepository
         
         const string sql = """
             UPDATE users
-            SET last_login_at = NOW(), last_login_ip = @IpAddress, failed_login_attempts = 0
-            WHERE id = @Id
+            SET "LastLoginAt" = NOW(), "LastLoginIp" = @IpAddress, "FailedLoginAttempts" = 0
+            WHERE "Id" = @Id
             """;
         var rowsAffected = await connection.ExecuteAsync(sql, new { Id = id, IpAddress = ipAddress });
         return rowsAffected > 0;
@@ -191,7 +199,7 @@ public class UserRepository : IUserRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
-        const string sql = "SELECT password_hash FROM users WHERE id = @Id AND is_deleted = false";
+        const string sql = """SELECT "PasswordHash" FROM users WHERE "Id" = @Id AND "IsDeleted" = false""";
         return await connection.ExecuteScalarAsync<string?>(sql, new { Id = id });
     }
 
@@ -199,7 +207,7 @@ public class UserRepository : IUserRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
-        const string sql = "SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(email) = LOWER(@Email) AND is_deleted = false)";
+        const string sql = """SELECT EXISTS(SELECT 1 FROM users WHERE LOWER("Email") = LOWER(@Email) AND "IsDeleted" = false)""";
         return await connection.ExecuteScalarAsync<bool>(sql, new { Email = email });
     }
 
@@ -207,7 +215,7 @@ public class UserRepository : IUserRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
-        const string sql = "SELECT EXISTS(SELECT 1 FROM users WHERE LOWER(username) = LOWER(@Username) AND is_deleted = false)";
+        const string sql = """SELECT EXISTS(SELECT 1 FROM users WHERE LOWER("Username") = LOWER(@Username) AND "IsDeleted" = false)""";
         return await connection.ExecuteScalarAsync<bool>(sql, new { Username = username });
     }
 
@@ -216,13 +224,13 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
         const string sql = """
-            SELECT id, user_id as UserId, company_name as CompanyName, website,
-                   linkedin_url as LinkedInUrl, github_url as GitHubUrl, portfolio_url as PortfolioUrl,
-                   headline, about, years_of_experience as YearsOfExperience, hourly_rate as HourlyRate,
-                   available_for_hire as AvailableForHire, completed_projects as CompletedProjects,
-                   total_earnings as TotalEarnings, id_verified as IdVerified
+            SELECT "Id", "UserId", "CompanyName", "Website",
+                   "LinkedInUrl", "GitHubUrl", "PortfolioUrl",
+                   "Headline", "About", "YearsOfExperience", "HourlyRate",
+                   "AvailableForHire", "CompletedProjects",
+                   "TotalEarnings", "IdVerified"
             FROM user_profiles
-            WHERE user_id = @UserId AND is_deleted = false
+            WHERE "UserId" = @UserId AND "IsDeleted" = false
             """;
         
         return await connection.QuerySingleOrDefaultAsync<UserProfileDto>(sql, new { UserId = userId });
@@ -234,24 +242,26 @@ public class UserRepository : IUserRepository
         
         // Upsert profile
         const string sql = """
-            INSERT INTO user_profiles (id, user_id, company_name, website, linkedin_url, github_url,
-                                       portfolio_url, headline, about, years_of_experience, hourly_rate,
-                                       available_for_hire, created_at, is_deleted)
+            INSERT INTO user_profiles ("Id", "UserId", "CompanyName", "Website", "LinkedInUrl", "GitHubUrl",
+                                       "PortfolioUrl", "Headline", "About", "YearsOfExperience", "HourlyRate",
+                                       "AvailableForHire", "CompletedProjects", "OngoingProjects", "TotalEarnings",
+                                       "IdVerified", "CreatedAt", "IsDeleted")
             VALUES (@Id, @UserId, @CompanyName, @Website, @LinkedInUrl, @GitHubUrl, @PortfolioUrl,
-                   @Headline, @About, @YearsOfExperience, @HourlyRate, @AvailableForHire, NOW(), false)
-            ON CONFLICT (user_id) 
+                   @Headline, @About, @YearsOfExperience, @HourlyRate, @AvailableForHire, 0, 0, 0,
+                   false, NOW(), false)
+            ON CONFLICT ("UserId") 
             DO UPDATE SET
-                company_name = COALESCE(@CompanyName, user_profiles.company_name),
-                website = COALESCE(@Website, user_profiles.website),
-                linkedin_url = COALESCE(@LinkedInUrl, user_profiles.linkedin_url),
-                github_url = COALESCE(@GitHubUrl, user_profiles.github_url),
-                portfolio_url = COALESCE(@PortfolioUrl, user_profiles.portfolio_url),
-                headline = COALESCE(@Headline, user_profiles.headline),
-                about = COALESCE(@About, user_profiles.about),
-                years_of_experience = COALESCE(@YearsOfExperience, user_profiles.years_of_experience),
-                hourly_rate = COALESCE(@HourlyRate, user_profiles.hourly_rate),
-                available_for_hire = COALESCE(@AvailableForHire, user_profiles.available_for_hire),
-                updated_at = NOW()
+                "CompanyName" = COALESCE(@CompanyName, user_profiles."CompanyName"),
+                "Website" = COALESCE(@Website, user_profiles."Website"),
+                "LinkedInUrl" = COALESCE(@LinkedInUrl, user_profiles."LinkedInUrl"),
+                "GitHubUrl" = COALESCE(@GitHubUrl, user_profiles."GitHubUrl"),
+                "PortfolioUrl" = COALESCE(@PortfolioUrl, user_profiles."PortfolioUrl"),
+                "Headline" = COALESCE(@Headline, user_profiles."Headline"),
+                "About" = COALESCE(@About, user_profiles."About"),
+                "YearsOfExperience" = COALESCE(@YearsOfExperience, user_profiles."YearsOfExperience"),
+                "HourlyRate" = COALESCE(@HourlyRate, user_profiles."HourlyRate"),
+                "AvailableForHire" = COALESCE(@AvailableForHire, user_profiles."AvailableForHire"),
+                "UpdatedAt" = NOW()
             """;
         
         var rowsAffected = await connection.ExecuteAsync(sql, new
@@ -278,14 +288,14 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
         const string sql = """
-            SELECT us.id, us.user_id as UserId, us.skill_id as SkillId, s.name as SkillName,
-                   us.level, us.years_of_experience as YearsOfExperience,
-                   us.verification_status as VerificationStatus, us.test_score as TestScore,
-                   us.is_endorsed as IsEndorsed, us.endorsement_count as EndorsementCount
+            SELECT us."Id", us."UserId", us."SkillId", s."Name" as SkillName,
+                   us."Level", us."YearsOfExperience",
+                   us."VerificationStatus", us."TestScore",
+                   us."IsEndorsed", us."EndorsementCount"
             FROM user_skills us
-            JOIN skills s ON us.skill_id = s.id
-            WHERE us.user_id = @UserId AND us.is_deleted = false
-            ORDER BY us.is_primary DESC, us.endorsement_count DESC
+            JOIN skills s ON us."SkillId" = s."Id"
+            WHERE us."UserId" = @UserId AND us."IsDeleted" = false
+            ORDER BY us."IsPrimary" DESC, us."EndorsementCount" DESC
             """;
         
         return await connection.QueryAsync<UserSkillDto>(sql, new { UserId = userId });
@@ -296,12 +306,16 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         
         const string sql = """
-            INSERT INTO user_skills (id, user_id, skill_id, level, years_of_experience, created_at, is_deleted)
-            VALUES (@Id, @UserId, @SkillId, @Level, @YearsOfExperience, NOW(), false)
-            ON CONFLICT (user_id, skill_id) DO UPDATE SET
-                level = @Level,
-                years_of_experience = @YearsOfExperience,
-                updated_at = NOW()
+            INSERT INTO user_skills ("Id", "UserId", "SkillId", "Level", "YearsOfExperience",
+                                    "VerificationStatus", "IsPrimary", "IsEndorsed", "EndorsementCount",
+                                    "CreatedAt", "IsDeleted")
+            VALUES (@Id, @UserId, @SkillId, @Level, @YearsOfExperience,
+                   0, false, false, 0,
+                   NOW(), false)
+            ON CONFLICT ("UserId", "SkillId") DO UPDATE SET
+                "Level" = @Level,
+                "YearsOfExperience" = @YearsOfExperience,
+                "UpdatedAt" = NOW()
             """;
         
         var rowsAffected = await connection.ExecuteAsync(sql, new
@@ -322,8 +336,8 @@ public class UserRepository : IUserRepository
         
         const string sql = """
             UPDATE user_skills
-            SET is_deleted = true, deleted_at = NOW()
-            WHERE user_id = @UserId AND skill_id = @SkillId
+            SET "IsDeleted" = true, "DeletedAt" = NOW()
+            WHERE "UserId" = @UserId AND "SkillId" = @SkillId
             """;
         
         var rowsAffected = await connection.ExecuteAsync(sql, new { UserId = userId, SkillId = skillId });

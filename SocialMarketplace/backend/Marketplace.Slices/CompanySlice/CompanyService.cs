@@ -42,16 +42,16 @@ public class CompanyRepository : ICompanyRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QuerySingleOrDefaultAsync<CompanyDto>("""
-            SELECT c.id, c.owner_id as OwnerId, c.name, c.slug, c.legal_name as LegalName,
-                   c.description, c.logo_url as LogoUrl, c.banner_url as BannerUrl,
+            SELECT c.id, c."OwnerId", c.name, c.slug, c."LegalName",
+                   c.description, c."LogoUrl", c."BannerUrl",
                    c.email, c.phone, c.website, c.address, c.city, c.country,
-                   c.company_type as CompanyType, c.industry, c.founded_year as FoundedYear,
-                   c.company_size as CompanySize, c.status, c.is_verified as IsVerified,
-                   c.rating, c.total_reviews as TotalReviews, c.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as OwnerName
-            FROM companies c
-            JOIN users u ON c.owner_id = u.id
-            WHERE c.id = @Id AND c.is_deleted = false
+                   c."CompanyType", c.industry, c."FoundedYear",
+                   c."CompanySize", c.status, c."IsVerified",
+                   c.rating, c."TotalReviews", c."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as OwnerName
+            FROM "Companies" c
+            JOIN users u ON c."OwnerId" = u.id
+            WHERE c.id = @Id AND c."IsDeleted" = false
             """, new { Id = id });
     }
 
@@ -59,11 +59,11 @@ public class CompanyRepository : ICompanyRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QuerySingleOrDefaultAsync<CompanyDto>("""
-            SELECT c.id, c.owner_id as OwnerId, c.name, c.slug, c.description,
-                   c.logo_url as LogoUrl, c.industry, c.company_size as CompanySize,
-                   c.is_verified as IsVerified, c.rating, c.created_at as CreatedAt
-            FROM companies c
-            WHERE c.slug = @Slug AND c.is_deleted = false
+            SELECT c.id, c."OwnerId", c.name, c.slug, c.description,
+                   c."LogoUrl", c.industry, c."CompanySize",
+                   c."IsVerified", c.rating, c."CreatedAt"
+            FROM "Companies" c
+            WHERE c.slug = @Slug AND c."IsDeleted" = false
             """, new { Slug = slug });
     }
 
@@ -71,24 +71,24 @@ public class CompanyRepository : ICompanyRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = "WHERE c.is_deleted = false";
+        var whereClause = @"WHERE c.""IsDeleted"" = false";
         if (!string.IsNullOrEmpty(search))
             whereClause += " AND (c.name ILIKE @Search OR c.description ILIKE @Search OR c.industry ILIKE @Search)";
         if (!string.IsNullOrEmpty(industry))
             whereClause += " AND c.industry ILIKE @Industry";
 
         var totalCount = await connection.ExecuteScalarAsync<int>(
-            $"SELECT COUNT(*) FROM companies c {whereClause}",
+            $"""SELECT COUNT(*) FROM "Companies" c {whereClause}""",
             new { Search = $"%{search}%", Industry = $"%{industry}%" });
 
         var companies = await connection.QueryAsync<CompanyListDto>($"""
-            SELECT c.id, c.name, c.slug, c.logo_url as LogoUrl, c.industry,
-                   c.company_size as CompanySize, c.city, c.country,
-                   c.is_verified as IsVerified, c.rating, c.created_at as CreatedAt,
-                   (SELECT COUNT(*) FROM company_employees ce WHERE ce.company_id = c.id AND ce.is_active = true) as EmployeeCount
-            FROM companies c
+            SELECT c.id, c.name, c.slug, c."LogoUrl", c.industry,
+                   c."CompanySize", c.city, c.country,
+                   c."IsVerified", c.rating, c."CreatedAt",
+                   (SELECT COUNT(*) FROM "CompanyEmployees" ce WHERE ce."CompanyId" = c.id AND ce."IsActive" = true) as EmployeeCount
+            FROM "Companies" c
             {whereClause}
-            ORDER BY c.is_verified DESC, c.rating DESC, c.created_at DESC
+            ORDER BY c."IsVerified" DESC, c.rating DESC, c."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """, new { Search = $"%{search}%", Industry = $"%{industry}%", PageSize = pageSize, Offset = (page - 1) * pageSize });
 
@@ -102,13 +102,15 @@ public class CompanyRepository : ICompanyRepository
         var slug = dto.Name.ToLower().Replace(" ", "-").Replace("'", "");
 
         await connection.ExecuteAsync("""
-            INSERT INTO companies (id, owner_id, name, slug, legal_name, description, logo_url, banner_url,
+            INSERT INTO "Companies" (id, "OwnerId", name, slug, "LegalName", description, "LogoUrl", "BannerUrl",
                                   email, phone, website, address, city, country,
-                                  company_type, industry, founded_year, company_size, status,
-                                  created_at, is_deleted)
+                                  "CompanyType", industry, "FoundedYear", "CompanySize", status,
+                                  "IsVerified", "Rating", "TotalReviews", "TotalProjects", "TotalEmployees", "CommissionRate",
+                                  "CreatedAt", "IsDeleted")
             VALUES (@Id, @OwnerId, @Name, @Slug, @LegalName, @Description, @LogoUrl, @BannerUrl,
                    @Email, @Phone, @Website, @Address, @City, @Country,
                    @CompanyType, @Industry, @FoundedYear, @CompanySize, 1,
+                   false, 0, 0, 0, 0, 0,
                    NOW(), false)
             """, new
         {
@@ -129,29 +131,29 @@ public class CompanyRepository : ICompanyRepository
 
         if (dto.Name != null) { updates.Add("name = @Name"); parameters.Add("Name", dto.Name); }
         if (dto.Description != null) { updates.Add("description = @Description"); parameters.Add("Description", dto.Description); }
-        if (dto.LogoUrl != null) { updates.Add("logo_url = @LogoUrl"); parameters.Add("LogoUrl", dto.LogoUrl); }
+        if (dto.LogoUrl != null) { updates.Add(@"""LogoUrl"" = @LogoUrl"); parameters.Add("LogoUrl", dto.LogoUrl); }
         if (dto.Industry != null) { updates.Add("industry = @Industry"); parameters.Add("Industry", dto.Industry); }
         if (dto.Website != null) { updates.Add("website = @Website"); parameters.Add("Website", dto.Website); }
 
         if (updates.Count == 0) return true;
-        updates.Add("updated_at = NOW()");
+        updates.Add(@"""UpdatedAt"" = NOW()");
 
         return await connection.ExecuteAsync(
-            $"UPDATE companies SET {string.Join(", ", updates)} WHERE id = @Id AND is_deleted = false", parameters) > 0;
+            $"""UPDATE "Companies" SET {string.Join(", ", updates)} WHERE id = @Id AND "IsDeleted" = false""", parameters) > 0;
     }
 
     public async Task<IEnumerable<CompanyEmployeeDto>> GetEmployeesAsync(Guid companyId)
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QueryAsync<CompanyEmployeeDto>("""
-            SELECT ce.id, ce.user_id as UserId, ce.title, ce.department,
-                   ce.is_active as IsActive, ce.joined_at as JoinedAt,
-                   u.first_name as FirstName, u.last_name as LastName,
-                   u.avatar_url as AvatarUrl, u.email
-            FROM company_employees ce
-            JOIN users u ON ce.user_id = u.id
-            WHERE ce.company_id = @CompanyId AND ce.is_active = true
-            ORDER BY ce.joined_at
+            SELECT ce.id, ce."UserId", ce.title, ce.department,
+                   ce."IsActive", ce."JoinedAt",
+                   u."FirstName", u."LastName",
+                   u."AvatarUrl", u.email
+            FROM "CompanyEmployees" ce
+            JOIN users u ON ce."UserId" = u.id
+            WHERE ce."CompanyId" = @CompanyId AND ce."IsActive" = true
+            ORDER BY ce."JoinedAt"
             """, new { CompanyId = companyId });
     }
 
@@ -160,9 +162,15 @@ public class CompanyRepository : ICompanyRepository
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         var id = Guid.NewGuid();
         return await connection.ExecuteAsync("""
-            INSERT INTO company_employees (id, company_id, user_id, title, department, is_active, joined_at, created_at, is_deleted)
-            VALUES (@Id, @CompanyId, @UserId, @Title, @Department, true, NOW(), NOW(), false)
-            ON CONFLICT (company_id, user_id) DO UPDATE SET title = @Title, department = @Department, is_active = true, updated_at = NOW()
+            INSERT INTO "CompanyEmployees" (id, "CompanyId", "UserId", "RoleId", title, department,
+                                           "IsActive", "JoinedAt",
+                                           "CanManageStores", "CanManageEmployees", "CanManageProjects", "CanManageFinances",
+                                           "CreatedAt", "IsDeleted")
+            VALUES (@Id, @CompanyId, @UserId, (SELECT "Id" FROM roles WHERE "IsDefault" = true LIMIT 1), @Title, @Department,
+                   true, NOW(),
+                   false, false, false, false,
+                   NOW(), false)
+            ON CONFLICT ("CompanyId", "UserId") DO UPDATE SET title = @Title, department = @Department, "IsActive" = true, "UpdatedAt" = NOW()
             """, new { Id = id, CompanyId = companyId, UserId = userId, Title = title, Department = department }) > 0;
     }
 
@@ -170,7 +178,7 @@ public class CompanyRepository : ICompanyRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE company_employees SET is_active = false, left_at = NOW(), updated_at = NOW() WHERE company_id = @CompanyId AND user_id = @UserId",
+            """UPDATE "CompanyEmployees" SET "IsActive" = false, "LeftAt" = NOW(), "UpdatedAt" = NOW() WHERE "CompanyId" = @CompanyId AND "UserId" = @UserId""",
             new { CompanyId = companyId, UserId = userId }) > 0;
     }
 
@@ -180,7 +188,7 @@ public class CompanyRepository : ICompanyRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         var totalCount = await connection.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM projects WHERE client_id IN (SELECT owner_id FROM companies WHERE id = @CompanyId) AND project_type = 'Job' AND is_deleted = false",
+            """SELECT COUNT(*) FROM projects WHERE client_id IN (SELECT "OwnerId" FROM "Companies" WHERE id = @CompanyId) AND project_type = 'Job' AND is_deleted = false""",
             new { CompanyId = companyId });
 
         var jobs = await connection.QueryAsync<JobDto>("""
@@ -189,9 +197,9 @@ public class CompanyRepository : ICompanyRepository
                    p.experience_level as ExperienceLevel, p.visibility as EmploymentType,
                    p.tags as Skills, p.deadline as ApplicationDeadline,
                    p.status, p.created_at as PostedAt,
-                   c.name as CompanyName, c.logo_url as CompanyLogoUrl, c.city, c.country
+                   c.name as CompanyName, c."LogoUrl" as CompanyLogoUrl, c.city, c.country
             FROM projects p
-            JOIN companies c ON p.client_id = c.owner_id AND c.id = @CompanyId
+            JOIN "Companies" c ON p.client_id = c."OwnerId" AND c.id = @CompanyId
             WHERE p.project_type = 'Job' AND p.is_deleted = false
             ORDER BY p.created_at DESC
             LIMIT @PageSize OFFSET @Offset

@@ -26,13 +26,13 @@ public class ResumeRepository : IResumeRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT r.id, r.user_id as UserId, r.title, r.template, r.is_public as IsPublic, r.pdf_url as PdfUrl,
-                   r.personal_info as PersonalInfo, r.education as Education, r.experience as Experience,
-                   r.skills as Skills, r.certifications as Certifications, r.projects as Projects,
-                   r.languages as Languages, r.custom_sections as CustomSections,
-                   r.created_at as CreatedAt, r.updated_at as UpdatedAt
+            SELECT r."Id", r."UserId", r."Title", r."Template", r."IsPublic", r."PdfUrl",
+                   r."PersonalInfo", r."Education", r."Experience",
+                   r."Skills", r."Certifications", r."Projects",
+                   r."Languages", r."CustomSections",
+                   r."CreatedAt", r."UpdatedAt"
             FROM resumes r
-            WHERE r.id = @Id AND r.is_deleted = false
+            WHERE r."Id" = @Id AND r."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ResumeDto>(sql, new { Id = id });
@@ -43,11 +43,11 @@ public class ResumeRepository : IResumeRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT r.id, r.title, r.template, r.is_public as IsPublic, r.pdf_url as PdfUrl,
-                   r.created_at as CreatedAt, r.updated_at as UpdatedAt
+            SELECT r."Id", r."Title", r."Template", r."IsPublic", r."PdfUrl",
+                   r."CreatedAt", r."UpdatedAt"
             FROM resumes r
-            WHERE r.user_id = @UserId AND r.is_deleted = false
-            ORDER BY r.updated_at DESC NULLS LAST, r.created_at DESC
+            WHERE r."UserId" = @UserId AND r."IsDeleted" = false
+            ORDER BY r."UpdatedAt" DESC NULLS LAST, r."CreatedAt" DESC
             """;
 
         return await connection.QueryAsync<ResumeListDto>(sql, new { UserId = userId });
@@ -60,15 +60,15 @@ public class ResumeRepository : IResumeRepository
         var id = Guid.NewGuid();
 
         const string sql = """
-            INSERT INTO resumes (id, user_id, title, template, is_public,
-                                personal_info, education, experience, skills,
-                                certifications, projects, languages, custom_sections,
-                                created_at, is_deleted)
+            INSERT INTO resumes ("Id", "UserId", "Title", "Template", "IsPublic",
+                                "PersonalInfo", "Education", "Experience", "Skills",
+                                "Certifications", "Projects", "Languages", "CustomSections",
+                                "CreatedAt", "IsDeleted")
             VALUES (@Id, @UserId, @Title, @Template, @IsPublic,
                    @PersonalInfo::jsonb, @Education::jsonb, @Experience::jsonb, @Skills::jsonb,
                    @Certifications::jsonb, @Projects::jsonb, @Languages::jsonb, @CustomSections::jsonb,
                    NOW(), false)
-            RETURNING id
+            RETURNING "Id"
             """;
 
         return await connection.ExecuteScalarAsync<Guid>(sql, new
@@ -97,23 +97,23 @@ public class ResumeRepository : IResumeRepository
         var parameters = new DynamicParameters();
         parameters.Add("Id", id);
 
-        if (dto.Title != null) { updates.Add("title = @Title"); parameters.Add("Title", dto.Title); }
-        if (dto.Template != null) { updates.Add("template = @Template"); parameters.Add("Template", dto.Template); }
-        if (dto.IsPublic.HasValue) { updates.Add("is_public = @IsPublic"); parameters.Add("IsPublic", dto.IsPublic.Value); }
-        if (dto.PdfUrl != null) { updates.Add("pdf_url = @PdfUrl"); parameters.Add("PdfUrl", dto.PdfUrl); }
-        if (dto.PersonalInfo != null) { updates.Add("personal_info = @PersonalInfo::jsonb"); parameters.Add("PersonalInfo", dto.PersonalInfo); }
-        if (dto.Education != null) { updates.Add("education = @Education::jsonb"); parameters.Add("Education", dto.Education); }
-        if (dto.Experience != null) { updates.Add("experience = @Experience::jsonb"); parameters.Add("Experience", dto.Experience); }
-        if (dto.Skills != null) { updates.Add("skills = @Skills::jsonb"); parameters.Add("Skills", dto.Skills); }
-        if (dto.Certifications != null) { updates.Add("certifications = @Certifications::jsonb"); parameters.Add("Certifications", dto.Certifications); }
-        if (dto.Projects != null) { updates.Add("projects = @Projects::jsonb"); parameters.Add("Projects", dto.Projects); }
-        if (dto.Languages != null) { updates.Add("languages = @Languages::jsonb"); parameters.Add("Languages", dto.Languages); }
-        if (dto.CustomSections != null) { updates.Add("custom_sections = @CustomSections::jsonb"); parameters.Add("CustomSections", dto.CustomSections); }
+        if (dto.Title != null) { updates.Add(@"""Title"" = @Title"); parameters.Add("Title", dto.Title); }
+        if (dto.Template != null) { updates.Add(@"""Template"" = @Template"); parameters.Add("Template", dto.Template); }
+        if (dto.IsPublic.HasValue) { updates.Add(@"""IsPublic"" = @IsPublic"); parameters.Add("IsPublic", dto.IsPublic.Value); }
+        if (dto.PdfUrl != null) { updates.Add(@"""PdfUrl"" = @PdfUrl"); parameters.Add("PdfUrl", dto.PdfUrl); }
+        if (dto.PersonalInfo != null) { updates.Add(@"""PersonalInfo"" = @PersonalInfo::jsonb"); parameters.Add("PersonalInfo", dto.PersonalInfo); }
+        if (dto.Education != null) { updates.Add(@"""Education"" = @Education::jsonb"); parameters.Add("Education", dto.Education); }
+        if (dto.Experience != null) { updates.Add(@"""Experience"" = @Experience::jsonb"); parameters.Add("Experience", dto.Experience); }
+        if (dto.Skills != null) { updates.Add(@"""Skills"" = @Skills::jsonb"); parameters.Add("Skills", dto.Skills); }
+        if (dto.Certifications != null) { updates.Add(@"""Certifications"" = @Certifications::jsonb"); parameters.Add("Certifications", dto.Certifications); }
+        if (dto.Projects != null) { updates.Add(@"""Projects"" = @Projects::jsonb"); parameters.Add("Projects", dto.Projects); }
+        if (dto.Languages != null) { updates.Add(@"""Languages"" = @Languages::jsonb"); parameters.Add("Languages", dto.Languages); }
+        if (dto.CustomSections != null) { updates.Add(@"""CustomSections"" = @CustomSections::jsonb"); parameters.Add("CustomSections", dto.CustomSections); }
 
         if (updates.Count == 0) return true;
-        updates.Add("updated_at = NOW()");
+        updates.Add(@"""UpdatedAt"" = NOW()");
 
-        var sql = $"UPDATE resumes SET {string.Join(", ", updates)} WHERE id = @Id AND is_deleted = false";
+        var sql = $@"UPDATE resumes SET {string.Join(", ", updates)} WHERE ""Id"" = @Id AND ""IsDeleted"" = false";
         return await connection.ExecuteAsync(sql, parameters) > 0;
     }
 
@@ -121,7 +121,7 @@ public class ResumeRepository : IResumeRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE resumes SET is_deleted = true, deleted_at = NOW() WHERE id = @Id", new { Id = id }) > 0;
+            @"UPDATE resumes SET ""IsDeleted"" = true, ""DeletedAt"" = NOW() WHERE ""Id"" = @Id", new { Id = id }) > 0;
     }
 }
 

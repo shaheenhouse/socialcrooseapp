@@ -32,11 +32,11 @@ public class WalletRepository : IWalletRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QuerySingleOrDefaultAsync<WalletDto>("""
-            SELECT id, user_id as UserId, balance, pending_balance as PendingBalance,
-                   held_balance as HeldBalance, currency, is_active as IsActive,
-                   total_earned as TotalEarned, total_withdrawn as TotalWithdrawn,
-                   total_spent as TotalSpent, created_at as CreatedAt
-            FROM wallets WHERE user_id = @UserId AND is_deleted = false
+            SELECT id, "UserId", balance, "PendingBalance",
+                   "HeldBalance", currency, "IsActive",
+                   "TotalEarned", "TotalWithdrawn",
+                   "TotalSpent", "CreatedAt"
+            FROM wallets WHERE "UserId" = @UserId AND "IsDeleted" = false
             """, new { UserId = userId });
     }
 
@@ -45,8 +45,12 @@ public class WalletRepository : IWalletRepository
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         var id = Guid.NewGuid();
         await connection.ExecuteAsync("""
-            INSERT INTO wallets (id, user_id, balance, pending_balance, held_balance, currency, is_active, created_at, is_deleted)
-            VALUES (@Id, @UserId, 0, 0, 0, @Currency, true, NOW(), false)
+            INSERT INTO wallets (id, "UserId", balance, "PendingBalance", "HeldBalance", currency,
+                                "IsActive", "IsLocked", "TotalEarned", "TotalWithdrawn", "TotalSpent",
+                                "CreatedAt", "IsDeleted")
+            VALUES (@Id, @UserId, 0, 0, 0, @Currency,
+                   true, false, 0, 0, 0,
+                   NOW(), false)
             """, new { Id = id, UserId = userId, Currency = currency });
         return id;
     }
@@ -55,7 +59,7 @@ public class WalletRepository : IWalletRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = "WHERE t.wallet_id = @WalletId AND t.is_deleted = false";
+        var whereClause = @"WHERE t.wallet_id = @WalletId AND t.""IsDeleted"" = false";
         if (!string.IsNullOrEmpty(type))
             whereClause += " AND t.type = @Type::integer";
 
@@ -63,12 +67,12 @@ public class WalletRepository : IWalletRepository
             $"SELECT COUNT(*) FROM transactions t {whereClause}", new { WalletId = walletId, Type = type });
 
         var transactions = await connection.QueryAsync<TransactionDto>($"""
-            SELECT t.id, t.transaction_number as TransactionNumber, t.type, t.amount,
-                   t.balance_before as BalanceBefore, t.balance_after as BalanceAfter,
-                   t.currency, t.description, t.reference, t.status, t.created_at as CreatedAt
+            SELECT t.id, t."TransactionNumber", t.type, t.amount,
+                   t."BalanceBefore", t."BalanceAfter",
+                   t.currency, t.description, t.reference, t.status, t."CreatedAt"
             FROM transactions t
             {whereClause}
-            ORDER BY t.created_at DESC
+            ORDER BY t."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """, new { WalletId = walletId, Type = type, PageSize = pageSize, Offset = (page - 1) * pageSize });
 
@@ -79,17 +83,17 @@ public class WalletRepository : IWalletRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QueryAsync<EscrowDto>("""
-            SELECT e.id, e.escrow_number as EscrowNumber, e.amount, e.released_amount as ReleasedAmount,
-                   e.refunded_amount as RefundedAmount, e.held_amount as HeldAmount,
-                   e.currency, e.status, e.created_at as CreatedAt,
-                   CASE WHEN e.buyer_id = @UserId THEN 'Buyer' ELSE 'Seller' END as UserRole,
-                   b.first_name || ' ' || b.last_name as BuyerName,
-                   s.first_name || ' ' || s.last_name as SellerName
+            SELECT e.id, e."EscrowNumber", e.amount, e."ReleasedAmount",
+                   e."RefundedAmount", e."HeldAmount",
+                   e.currency, e.status, e."CreatedAt",
+                   CASE WHEN e."BuyerId" = @UserId THEN 'Buyer' ELSE 'Seller' END as UserRole,
+                   b."FirstName" || ' ' || b."LastName" as BuyerName,
+                   s."FirstName" || ' ' || s."LastName" as SellerName
             FROM escrows e
-            JOIN users b ON e.buyer_id = b.id
-            JOIN users s ON e.seller_id = s.id
-            WHERE (e.buyer_id = @UserId OR e.seller_id = @UserId) AND e.is_deleted = false
-            ORDER BY e.created_at DESC
+            JOIN users b ON e."BuyerId" = b.id
+            JOIN users s ON e."SellerId" = s.id
+            WHERE (e."BuyerId" = @UserId OR e."SellerId" = @UserId) AND e."IsDeleted" = false
+            ORDER BY e."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """, new { UserId = userId, PageSize = pageSize, Offset = (page - 1) * pageSize });
     }

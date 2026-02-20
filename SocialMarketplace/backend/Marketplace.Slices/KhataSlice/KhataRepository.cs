@@ -29,11 +29,11 @@ public class KhataRepository : IKhataRepository
     {
         using var connection = _connectionFactory.CreateReadConnection();
 
-        var whereClause = "WHERE kp.user_id = @UserId AND kp.is_deleted = false";
+        var whereClause = @"WHERE kp.""UserId"" = @UserId AND kp.""IsDeleted"" = false";
         if (!string.IsNullOrEmpty(query.Search))
-            whereClause += " AND (kp.party_name ILIKE @Search OR kp.party_phone ILIKE @Search)";
+            whereClause += @" AND (kp.""PartyName"" ILIKE @Search OR kp.""PartyPhone"" ILIKE @Search)";
         if (!string.IsNullOrEmpty(query.Status))
-            whereClause += " AND kp.type = @Status";
+            whereClause += @" AND kp.""Type"" = @Status";
 
         var countSql = $"SELECT COUNT(*) FROM khata_parties kp {whereClause}";
         var total = await connection.ExecuteScalarAsync<int>(countSql, new
@@ -44,11 +44,11 @@ public class KhataRepository : IKhataRepository
         });
 
         var sql = $@"
-            SELECT id, party_name, party_phone, party_address, type,
-                   total_credit, total_debit, balance, last_transaction_at, created_at
+            SELECT ""Id"", ""PartyName"", ""PartyPhone"", ""PartyAddress"", ""Type"",
+                   ""TotalCredit"", ""TotalDebit"", ""Balance"", ""LastTransactionAt"", ""CreatedAt""
             FROM khata_parties kp
             {whereClause}
-            ORDER BY last_transaction_at DESC NULLS LAST, created_at DESC
+            ORDER BY ""LastTransactionAt"" DESC NULLS LAST, ""CreatedAt"" DESC
             LIMIT @PageSize OFFSET @Offset";
 
         var items = await connection.QueryAsync<KhataPartyDto>(sql, new
@@ -67,9 +67,9 @@ public class KhataRepository : IKhataRepository
     {
         using var connection = _connectionFactory.CreateReadConnection();
         return await connection.QuerySingleOrDefaultAsync<KhataPartyDto>(
-            @"SELECT id, party_name, party_phone, party_address, type,
-                     total_credit, total_debit, balance, last_transaction_at, created_at
-              FROM khata_parties WHERE id = @PartyId AND user_id = @UserId AND is_deleted = false",
+            @"SELECT ""Id"", ""PartyName"", ""PartyPhone"", ""PartyAddress"", ""Type"",
+                     ""TotalCredit"", ""TotalDebit"", ""Balance"", ""LastTransactionAt"", ""CreatedAt""
+              FROM khata_parties WHERE ""Id"" = @PartyId AND ""UserId"" = @UserId AND ""IsDeleted"" = false",
             new { PartyId = partyId, UserId = userId });
     }
 
@@ -80,7 +80,7 @@ public class KhataRepository : IKhataRepository
         var balance = dto.OpeningBalance ?? 0;
 
         await connection.ExecuteAsync(
-            @"INSERT INTO khata_parties (id, user_id, party_name, party_phone, party_address, type, opening_balance, balance, total_credit, total_debit, created_at, is_deleted)
+            @"INSERT INTO khata_parties (""Id"", ""UserId"", ""PartyName"", ""PartyPhone"", ""PartyAddress"", ""Type"", ""OpeningBalance"", ""Balance"", ""TotalCredit"", ""TotalDebit"", ""CreatedAt"", ""IsDeleted"")
               VALUES (@Id, @UserId, @PartyName, @PartyPhone, @PartyAddress, @Type, @OpeningBalance, @Balance, 0, 0, @CreatedAt, false)",
             new
             {
@@ -96,12 +96,12 @@ public class KhataRepository : IKhataRepository
         using var connection = _connectionFactory.CreateWriteConnection();
         var rows = await connection.ExecuteAsync(
             @"UPDATE khata_parties SET
-                party_name = COALESCE(@PartyName, party_name),
-                party_phone = COALESCE(@PartyPhone, party_phone),
-                party_address = COALESCE(@PartyAddress, party_address),
-                notes = COALESCE(@Notes, notes),
-                updated_at = @UpdatedAt
-              WHERE id = @PartyId AND user_id = @UserId AND is_deleted = false",
+                ""PartyName"" = COALESCE(@PartyName, ""PartyName""),
+                ""PartyPhone"" = COALESCE(@PartyPhone, ""PartyPhone""),
+                ""PartyAddress"" = COALESCE(@PartyAddress, ""PartyAddress""),
+                ""Notes"" = COALESCE(@Notes, ""Notes""),
+                ""UpdatedAt"" = @UpdatedAt
+              WHERE ""Id"" = @PartyId AND ""UserId"" = @UserId AND ""IsDeleted"" = false",
             new { dto.PartyName, dto.PartyPhone, dto.PartyAddress, dto.Notes, PartyId = partyId, UserId = userId, UpdatedAt = DateTime.UtcNow });
         return rows > 0;
     }
@@ -110,7 +110,7 @@ public class KhataRepository : IKhataRepository
     {
         using var connection = _connectionFactory.CreateWriteConnection();
         var rows = await connection.ExecuteAsync(
-            "UPDATE khata_parties SET is_deleted = true, deleted_at = @Now WHERE id = @PartyId AND user_id = @UserId",
+            @"UPDATE khata_parties SET ""IsDeleted"" = true, ""DeletedAt"" = @Now WHERE ""Id"" = @PartyId AND ""UserId"" = @UserId",
             new { PartyId = partyId, UserId = userId, Now = DateTime.UtcNow });
         return rows > 0;
     }
@@ -119,18 +119,18 @@ public class KhataRepository : IKhataRepository
     {
         using var connection = _connectionFactory.CreateReadConnection();
 
-        var whereClause = "WHERE ke.khata_party_id = @PartyId AND ke.is_deleted = false AND kp.user_id = @UserId";
+        var whereClause = @"WHERE ke.""KhataPartyId"" = @PartyId AND ke.""IsDeleted"" = false AND kp.""UserId"" = @UserId";
         if (!string.IsNullOrEmpty(query.Type))
-            whereClause += " AND ke.type = @Type";
+            whereClause += @" AND ke.""Type"" = @Type";
 
-        var countSql = $"SELECT COUNT(*) FROM khata_entries ke JOIN khata_parties kp ON kp.id = ke.khata_party_id {whereClause}";
+        var countSql = $@"SELECT COUNT(*) FROM khata_entries ke JOIN khata_parties kp ON kp.""Id"" = ke.""KhataPartyId"" {whereClause}";
         var total = await connection.ExecuteScalarAsync<int>(countSql, new { PartyId = partyId, UserId = userId, query.Type });
 
         var sql = $@"
-            SELECT ke.id, ke.amount, ke.type, ke.description, ke.transaction_date, ke.running_balance, ke.attachment_url, ke.created_at
-            FROM khata_entries ke JOIN khata_parties kp ON kp.id = ke.khata_party_id
+            SELECT ke.""Id"", ke.""Amount"", ke.""Type"", ke.""Description"", ke.""TransactionDate"", ke.""RunningBalance"", ke.""AttachmentUrl"", ke.""CreatedAt""
+            FROM khata_entries ke JOIN khata_parties kp ON kp.""Id"" = ke.""KhataPartyId""
             {whereClause}
-            ORDER BY ke.transaction_date DESC, ke.created_at DESC
+            ORDER BY ke.""TransactionDate"" DESC, ke.""CreatedAt"" DESC
             LIMIT @PageSize OFFSET @Offset";
 
         var items = await connection.QueryAsync<KhataEntryDto>(sql, new
@@ -151,19 +151,19 @@ public class KhataRepository : IKhataRepository
         using var tx = ((System.Data.Common.DbConnection)connection).BeginTransaction();
 
         var party = await connection.QuerySingleOrDefaultAsync<dynamic>(
-            "SELECT balance FROM khata_parties WHERE id = @PartyId AND user_id = @UserId AND is_deleted = false FOR UPDATE",
+            @"SELECT ""Balance"" FROM khata_parties WHERE ""Id"" = @PartyId AND ""UserId"" = @UserId AND ""IsDeleted"" = false FOR UPDATE",
             new { PartyId = partyId, UserId = userId }, tx);
 
         if (party == null) throw new InvalidOperationException("Party not found");
 
-        decimal currentBalance = party.balance;
+        decimal currentBalance = party.Balance;
         decimal newBalance = dto.Type == "credit" ? currentBalance + dto.Amount : currentBalance - dto.Amount;
 
         var entryId = Guid.NewGuid();
         var txDate = string.IsNullOrEmpty(dto.Date) ? DateTime.UtcNow : DateTime.Parse(dto.Date);
 
         await connection.ExecuteAsync(
-            @"INSERT INTO khata_entries (id, khata_party_id, amount, type, description, transaction_date, running_balance, attachment_url, created_at, is_deleted)
+            @"INSERT INTO khata_entries (""Id"", ""KhataPartyId"", ""Amount"", ""Type"", ""Description"", ""TransactionDate"", ""RunningBalance"", ""AttachmentUrl"", ""CreatedAt"", ""IsDeleted"")
               VALUES (@Id, @PartyId, @Amount, @Type, @Description, @TxDate, @RunningBalance, @AttachmentUrl, @CreatedAt, false)",
             new
             {
@@ -176,9 +176,9 @@ public class KhataRepository : IKhataRepository
 
         await connection.ExecuteAsync(
             @"UPDATE khata_parties SET
-                balance = @NewBalance, total_credit = total_credit + @CreditInc, total_debit = total_debit + @DebitInc,
-                last_transaction_at = @Now, updated_at = @Now
-              WHERE id = @PartyId",
+                ""Balance"" = @NewBalance, ""TotalCredit"" = ""TotalCredit"" + @CreditInc, ""TotalDebit"" = ""TotalDebit"" + @DebitInc,
+                ""LastTransactionAt"" = @Now, ""UpdatedAt"" = @Now
+              WHERE ""Id"" = @PartyId",
             new { NewBalance = newBalance, CreditInc = creditInc, DebitInc = debitInc, PartyId = partyId, Now = DateTime.UtcNow }, tx);
 
         tx.Commit();
@@ -191,12 +191,12 @@ public class KhataRepository : IKhataRepository
         using var connection = _connectionFactory.CreateReadConnection();
         var result = await connection.QuerySingleAsync<KhataSummaryDto>(
             @"SELECT
-                COALESCE(SUM(CASE WHEN balance > 0 THEN balance ELSE 0 END), 0) as total_receivable,
-                COALESCE(SUM(CASE WHEN balance < 0 THEN ABS(balance) ELSE 0 END), 0) as total_payable,
-                COALESCE(SUM(balance), 0) as net_balance,
-                COUNT(*) as total_parties,
-                (SELECT COUNT(*) FROM khata_entries ke JOIN khata_parties kp ON kp.id = ke.khata_party_id WHERE kp.user_id = @UserId AND ke.is_deleted = false) as total_transactions
-              FROM khata_parties WHERE user_id = @UserId AND is_deleted = false",
+                COALESCE(SUM(CASE WHEN ""Balance"" > 0 THEN ""Balance"" ELSE 0 END), 0) AS ""TotalReceivable"",
+                COALESCE(SUM(CASE WHEN ""Balance"" < 0 THEN ABS(""Balance"") ELSE 0 END), 0) AS ""TotalPayable"",
+                COALESCE(SUM(""Balance""), 0) AS ""NetBalance"",
+                COUNT(*) AS ""TotalParties"",
+                (SELECT COUNT(*) FROM khata_entries ke JOIN khata_parties kp ON kp.""Id"" = ke.""KhataPartyId"" WHERE kp.""UserId"" = @UserId AND ke.""IsDeleted"" = false) AS ""TotalTransactions""
+              FROM khata_parties WHERE ""UserId"" = @UserId AND ""IsDeleted"" = false",
             new { UserId = userId });
         return result;
     }

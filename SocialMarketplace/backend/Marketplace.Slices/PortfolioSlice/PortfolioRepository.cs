@@ -29,13 +29,13 @@ public class PortfolioRepository : IPortfolioRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT p.id, p.user_id as UserId, p.slug, p.is_public as IsPublic, p.theme,
-                   p.personal_info as PersonalInfo, p.education as Education, p.experience as Experience,
-                   p.skills as Skills, p.roles as Roles, p.certifications as Certifications,
-                   p.projects as Projects, p.achievements as Achievements, p.languages as Languages,
-                   p.resumes as Resumes, p.created_at as CreatedAt, p.updated_at as UpdatedAt
+            SELECT p."Id", p."UserId", p."Slug", p."IsPublic", p."Theme",
+                   p."PersonalInfo", p."Education", p."Experience",
+                   p."Skills", p."Roles", p."Certifications",
+                   p."Projects", p."Achievements", p."Languages",
+                   p."Resumes", p."CreatedAt", p."UpdatedAt"
             FROM portfolios p
-            WHERE p.id = @Id AND p.is_deleted = false
+            WHERE p."Id" = @Id AND p."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<PortfolioDto>(sql, new { Id = id });
@@ -46,13 +46,13 @@ public class PortfolioRepository : IPortfolioRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT p.id, p.user_id as UserId, p.slug, p.is_public as IsPublic, p.theme,
-                   p.personal_info as PersonalInfo, p.education as Education, p.experience as Experience,
-                   p.skills as Skills, p.roles as Roles, p.certifications as Certifications,
-                   p.projects as Projects, p.achievements as Achievements, p.languages as Languages,
-                   p.resumes as Resumes, p.created_at as CreatedAt, p.updated_at as UpdatedAt
+            SELECT p."Id", p."UserId", p."Slug", p."IsPublic", p."Theme",
+                   p."PersonalInfo", p."Education", p."Experience",
+                   p."Skills", p."Roles", p."Certifications",
+                   p."Projects", p."Achievements", p."Languages",
+                   p."Resumes", p."CreatedAt", p."UpdatedAt"
             FROM portfolios p
-            WHERE p.slug = @Slug AND p.is_deleted = false
+            WHERE p."Slug" = @Slug AND p."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<PortfolioDto>(sql, new { Slug = slug });
@@ -63,13 +63,13 @@ public class PortfolioRepository : IPortfolioRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT p.id, p.user_id as UserId, p.slug, p.is_public as IsPublic, p.theme,
-                   p.personal_info as PersonalInfo, p.education as Education, p.experience as Experience,
-                   p.skills as Skills, p.roles as Roles, p.certifications as Certifications,
-                   p.projects as Projects, p.achievements as Achievements, p.languages as Languages,
-                   p.resumes as Resumes, p.created_at as CreatedAt, p.updated_at as UpdatedAt
+            SELECT p."Id", p."UserId", p."Slug", p."IsPublic", p."Theme",
+                   p."PersonalInfo", p."Education", p."Experience",
+                   p."Skills", p."Roles", p."Certifications",
+                   p."Projects", p."Achievements", p."Languages",
+                   p."Resumes", p."CreatedAt", p."UpdatedAt"
             FROM portfolios p
-            WHERE p.user_id = @UserId AND p.is_deleted = false
+            WHERE p."UserId" = @UserId AND p."IsDeleted" = false
             LIMIT 1
             """;
 
@@ -83,15 +83,15 @@ public class PortfolioRepository : IPortfolioRepository
         var id = Guid.NewGuid();
 
         const string sql = """
-            INSERT INTO portfolios (id, user_id, slug, is_public, theme,
-                                   personal_info, education, experience, skills, roles,
-                                   certifications, projects, achievements, languages, resumes,
-                                   created_at, is_deleted)
+            INSERT INTO portfolios ("Id", "UserId", "Slug", "IsPublic", "Theme",
+                                   "PersonalInfo", "Education", "Experience", "Skills", "Roles",
+                                   "Certifications", "Projects", "Achievements", "Languages", "Resumes",
+                                   "CreatedAt", "IsDeleted")
             VALUES (@Id, @UserId, @Slug, @IsPublic, @Theme,
                    @PersonalInfo::jsonb, @Education::jsonb, @Experience::jsonb, @Skills::jsonb, @Roles::jsonb,
                    @Certifications::jsonb, @Projects::jsonb, @Achievements::jsonb, @Languages::jsonb, @Resumes::jsonb,
                    NOW(), false)
-            RETURNING id
+            RETURNING "Id"
             """;
 
         return await connection.ExecuteScalarAsync<Guid>(sql, new
@@ -122,24 +122,24 @@ public class PortfolioRepository : IPortfolioRepository
         var parameters = new DynamicParameters();
         parameters.Add("Id", id);
 
-        if (dto.Slug != null) { updates.Add("slug = @Slug"); parameters.Add("Slug", dto.Slug); }
-        if (dto.IsPublic.HasValue) { updates.Add("is_public = @IsPublic"); parameters.Add("IsPublic", dto.IsPublic.Value); }
-        if (dto.Theme != null) { updates.Add("theme = @Theme"); parameters.Add("Theme", dto.Theme); }
-        if (dto.PersonalInfo != null) { updates.Add("personal_info = @PersonalInfo::jsonb"); parameters.Add("PersonalInfo", dto.PersonalInfo); }
-        if (dto.Education != null) { updates.Add("education = @Education::jsonb"); parameters.Add("Education", dto.Education); }
-        if (dto.Experience != null) { updates.Add("experience = @Experience::jsonb"); parameters.Add("Experience", dto.Experience); }
-        if (dto.Skills != null) { updates.Add("skills = @Skills::jsonb"); parameters.Add("Skills", dto.Skills); }
-        if (dto.Roles != null) { updates.Add("roles = @Roles::jsonb"); parameters.Add("Roles", dto.Roles); }
-        if (dto.Certifications != null) { updates.Add("certifications = @Certifications::jsonb"); parameters.Add("Certifications", dto.Certifications); }
-        if (dto.Projects != null) { updates.Add("projects = @Projects::jsonb"); parameters.Add("Projects", dto.Projects); }
-        if (dto.Achievements != null) { updates.Add("achievements = @Achievements::jsonb"); parameters.Add("Achievements", dto.Achievements); }
-        if (dto.Languages != null) { updates.Add("languages = @Languages::jsonb"); parameters.Add("Languages", dto.Languages); }
-        if (dto.Resumes != null) { updates.Add("resumes = @Resumes::jsonb"); parameters.Add("Resumes", dto.Resumes); }
+        if (dto.Slug != null) { updates.Add(@"""Slug"" = @Slug"); parameters.Add("Slug", dto.Slug); }
+        if (dto.IsPublic.HasValue) { updates.Add(@"""IsPublic"" = @IsPublic"); parameters.Add("IsPublic", dto.IsPublic.Value); }
+        if (dto.Theme != null) { updates.Add(@"""Theme"" = @Theme"); parameters.Add("Theme", dto.Theme); }
+        if (dto.PersonalInfo != null) { updates.Add(@"""PersonalInfo"" = @PersonalInfo::jsonb"); parameters.Add("PersonalInfo", dto.PersonalInfo); }
+        if (dto.Education != null) { updates.Add(@"""Education"" = @Education::jsonb"); parameters.Add("Education", dto.Education); }
+        if (dto.Experience != null) { updates.Add(@"""Experience"" = @Experience::jsonb"); parameters.Add("Experience", dto.Experience); }
+        if (dto.Skills != null) { updates.Add(@"""Skills"" = @Skills::jsonb"); parameters.Add("Skills", dto.Skills); }
+        if (dto.Roles != null) { updates.Add(@"""Roles"" = @Roles::jsonb"); parameters.Add("Roles", dto.Roles); }
+        if (dto.Certifications != null) { updates.Add(@"""Certifications"" = @Certifications::jsonb"); parameters.Add("Certifications", dto.Certifications); }
+        if (dto.Projects != null) { updates.Add(@"""Projects"" = @Projects::jsonb"); parameters.Add("Projects", dto.Projects); }
+        if (dto.Achievements != null) { updates.Add(@"""Achievements"" = @Achievements::jsonb"); parameters.Add("Achievements", dto.Achievements); }
+        if (dto.Languages != null) { updates.Add(@"""Languages"" = @Languages::jsonb"); parameters.Add("Languages", dto.Languages); }
+        if (dto.Resumes != null) { updates.Add(@"""Resumes"" = @Resumes::jsonb"); parameters.Add("Resumes", dto.Resumes); }
 
         if (updates.Count == 0) return true;
-        updates.Add("updated_at = NOW()");
+        updates.Add(@"""UpdatedAt"" = NOW()");
 
-        var sql = $"UPDATE portfolios SET {string.Join(", ", updates)} WHERE id = @Id AND is_deleted = false";
+        var sql = $@"UPDATE portfolios SET {string.Join(", ", updates)} WHERE ""Id"" = @Id AND ""IsDeleted"" = false";
         return await connection.ExecuteAsync(sql, parameters) > 0;
     }
 
@@ -147,7 +147,7 @@ public class PortfolioRepository : IPortfolioRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE portfolios SET is_deleted = true, deleted_at = NOW() WHERE id = @Id", new { Id = id }) > 0;
+            @"UPDATE portfolios SET ""IsDeleted"" = true, ""DeletedAt"" = NOW() WHERE ""Id"" = @Id", new { Id = id }) > 0;
     }
 
     public async Task<IEnumerable<PortfolioListDto>> GetPublicPortfoliosAsync(int page, int pageSize)
@@ -155,12 +155,12 @@ public class PortfolioRepository : IPortfolioRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT p.id, p.slug, p.theme, p.personal_info as PersonalInfo, p.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as OwnerName, u.avatar_url as OwnerAvatarUrl
+            SELECT p."Id", p."Slug", p."Theme", p."PersonalInfo", p."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as OwnerName, u."AvatarUrl" as OwnerAvatarUrl
             FROM portfolios p
-            JOIN users u ON p.user_id = u.id
-            WHERE p.is_public = true AND p.is_deleted = false
-            ORDER BY p.updated_at DESC
+            JOIN users u ON p."UserId" = u."Id"
+            WHERE p."IsPublic" = true AND p."IsDeleted" = false
+            ORDER BY p."UpdatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -175,7 +175,7 @@ public class PortfolioRepository : IPortfolioRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM portfolios WHERE is_public = true AND is_deleted = false");
+            @"SELECT COUNT(*) FROM portfolios WHERE ""IsPublic"" = true AND ""IsDeleted"" = false");
     }
 }
 

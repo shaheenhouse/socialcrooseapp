@@ -29,12 +29,12 @@ public class DesignRepository : IDesignRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT d.id, d.user_id as UserId, d.name, d.description, d.width, d.height,
-                   d.canvas_json as CanvasJson, d.thumbnail, d.status, d.category,
-                   d.tags as Tags, d.is_template as IsTemplate, d.is_public as IsPublic,
-                   d.created_at as CreatedAt, d.updated_at as UpdatedAt
+            SELECT d."Id", d."UserId", d."Name", d."Description", d."Width", d."Height",
+                   d."CanvasJson", d."Thumbnail", d."Status", d."Category",
+                   d."Tags", d."IsTemplate", d."IsPublic",
+                   d."CreatedAt", d."UpdatedAt"
             FROM designs d
-            WHERE d.id = @Id AND d.is_deleted = false
+            WHERE d."Id" = @Id AND d."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<DesignDto>(sql, new { Id = id });
@@ -45,12 +45,12 @@ public class DesignRepository : IDesignRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT d.id, d.name, d.description, d.width, d.height, d.thumbnail,
-                   d.status, d.category, d.is_template as IsTemplate, d.is_public as IsPublic,
-                   d.created_at as CreatedAt, d.updated_at as UpdatedAt
+            SELECT d."Id", d."Name", d."Description", d."Width", d."Height", d."Thumbnail",
+                   d."Status", d."Category", d."IsTemplate", d."IsPublic",
+                   d."CreatedAt", d."UpdatedAt"
             FROM designs d
-            WHERE d.user_id = @UserId AND d.is_deleted = false
-            ORDER BY d.updated_at DESC NULLS LAST, d.created_at DESC
+            WHERE d."UserId" = @UserId AND d."IsDeleted" = false
+            ORDER BY d."UpdatedAt" DESC NULLS LAST, d."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -66,7 +66,7 @@ public class DesignRepository : IDesignRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM designs WHERE user_id = @UserId AND is_deleted = false",
+            @"SELECT COUNT(*) FROM designs WHERE ""UserId"" = @UserId AND ""IsDeleted"" = false",
             new { UserId = userId });
     }
 
@@ -74,17 +74,17 @@ public class DesignRepository : IDesignRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = "WHERE d.is_template = true AND d.is_deleted = false";
+        var whereClause = @"WHERE d.""IsTemplate"" = true AND d.""IsDeleted"" = false";
         if (!string.IsNullOrEmpty(category))
-            whereClause += " AND d.category = @Category";
+            whereClause += @" AND d.""Category"" = @Category";
 
         var sql = $"""
-            SELECT d.id, d.name, d.description, d.width, d.height, d.thumbnail,
-                   d.status, d.category, d.is_template as IsTemplate, d.is_public as IsPublic,
-                   d.created_at as CreatedAt, d.updated_at as UpdatedAt
+            SELECT d."Id", d."Name", d."Description", d."Width", d."Height", d."Thumbnail",
+                   d."Status", d."Category", d."IsTemplate", d."IsPublic",
+                   d."CreatedAt", d."UpdatedAt"
             FROM designs d
             {whereClause}
-            ORDER BY d.created_at DESC
+            ORDER BY d."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -100,9 +100,9 @@ public class DesignRepository : IDesignRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = "WHERE is_template = true AND is_deleted = false";
+        var whereClause = @"WHERE ""IsTemplate"" = true AND ""IsDeleted"" = false";
         if (!string.IsNullOrEmpty(category))
-            whereClause += " AND category = @Category";
+            whereClause += @" AND ""Category"" = @Category";
 
         return await connection.ExecuteScalarAsync<int>(
             $"SELECT COUNT(*) FROM designs {whereClause}", new { Category = category });
@@ -115,13 +115,13 @@ public class DesignRepository : IDesignRepository
         var id = Guid.NewGuid();
 
         const string sql = """
-            INSERT INTO designs (id, user_id, name, description, width, height,
-                                canvas_json, thumbnail, status, category, tags,
-                                is_template, is_public, created_at, is_deleted)
+            INSERT INTO designs ("Id", "UserId", "Name", "Description", "Width", "Height",
+                                "CanvasJson", "Thumbnail", "Status", "Category", "Tags",
+                                "IsTemplate", "IsPublic", "CreatedAt", "IsDeleted")
             VALUES (@Id, @UserId, @Name, @Description, @Width, @Height,
                    @CanvasJson, @Thumbnail, @Status, @Category, @Tags::jsonb,
                    @IsTemplate, @IsPublic, NOW(), false)
-            RETURNING id
+            RETURNING "Id"
             """;
 
         return await connection.ExecuteScalarAsync<Guid>(sql, new
@@ -150,22 +150,22 @@ public class DesignRepository : IDesignRepository
         var parameters = new DynamicParameters();
         parameters.Add("Id", id);
 
-        if (dto.Name != null) { updates.Add("name = @Name"); parameters.Add("Name", dto.Name); }
-        if (dto.Description != null) { updates.Add("description = @Description"); parameters.Add("Description", dto.Description); }
-        if (dto.Width.HasValue) { updates.Add("width = @Width"); parameters.Add("Width", dto.Width.Value); }
-        if (dto.Height.HasValue) { updates.Add("height = @Height"); parameters.Add("Height", dto.Height.Value); }
-        if (dto.CanvasJson != null) { updates.Add("canvas_json = @CanvasJson"); parameters.Add("CanvasJson", dto.CanvasJson); }
-        if (dto.Thumbnail != null) { updates.Add("thumbnail = @Thumbnail"); parameters.Add("Thumbnail", dto.Thumbnail); }
-        if (dto.Status != null) { updates.Add("status = @Status"); parameters.Add("Status", dto.Status); }
-        if (dto.Category != null) { updates.Add("category = @Category"); parameters.Add("Category", dto.Category); }
-        if (dto.Tags != null) { updates.Add("tags = @Tags::jsonb"); parameters.Add("Tags", dto.Tags); }
-        if (dto.IsTemplate.HasValue) { updates.Add("is_template = @IsTemplate"); parameters.Add("IsTemplate", dto.IsTemplate.Value); }
-        if (dto.IsPublic.HasValue) { updates.Add("is_public = @IsPublic"); parameters.Add("IsPublic", dto.IsPublic.Value); }
+        if (dto.Name != null) { updates.Add(@"""Name"" = @Name"); parameters.Add("Name", dto.Name); }
+        if (dto.Description != null) { updates.Add(@"""Description"" = @Description"); parameters.Add("Description", dto.Description); }
+        if (dto.Width.HasValue) { updates.Add(@"""Width"" = @Width"); parameters.Add("Width", dto.Width.Value); }
+        if (dto.Height.HasValue) { updates.Add(@"""Height"" = @Height"); parameters.Add("Height", dto.Height.Value); }
+        if (dto.CanvasJson != null) { updates.Add(@"""CanvasJson"" = @CanvasJson"); parameters.Add("CanvasJson", dto.CanvasJson); }
+        if (dto.Thumbnail != null) { updates.Add(@"""Thumbnail"" = @Thumbnail"); parameters.Add("Thumbnail", dto.Thumbnail); }
+        if (dto.Status != null) { updates.Add(@"""Status"" = @Status"); parameters.Add("Status", dto.Status); }
+        if (dto.Category != null) { updates.Add(@"""Category"" = @Category"); parameters.Add("Category", dto.Category); }
+        if (dto.Tags != null) { updates.Add(@"""Tags"" = @Tags::jsonb"); parameters.Add("Tags", dto.Tags); }
+        if (dto.IsTemplate.HasValue) { updates.Add(@"""IsTemplate"" = @IsTemplate"); parameters.Add("IsTemplate", dto.IsTemplate.Value); }
+        if (dto.IsPublic.HasValue) { updates.Add(@"""IsPublic"" = @IsPublic"); parameters.Add("IsPublic", dto.IsPublic.Value); }
 
         if (updates.Count == 0) return true;
-        updates.Add("updated_at = NOW()");
+        updates.Add(@"""UpdatedAt"" = NOW()");
 
-        var sql = $"UPDATE designs SET {string.Join(", ", updates)} WHERE id = @Id AND is_deleted = false";
+        var sql = $@"UPDATE designs SET {string.Join(", ", updates)} WHERE ""Id"" = @Id AND ""IsDeleted"" = false";
         return await connection.ExecuteAsync(sql, parameters) > 0;
     }
 
@@ -173,7 +173,7 @@ public class DesignRepository : IDesignRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE designs SET is_deleted = true, deleted_at = NOW() WHERE id = @Id", new { Id = id }) > 0;
+            @"UPDATE designs SET ""IsDeleted"" = true, ""DeletedAt"" = NOW() WHERE ""Id"" = @Id", new { Id = id }) > 0;
     }
 }
 

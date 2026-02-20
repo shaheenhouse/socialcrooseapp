@@ -32,20 +32,20 @@ public class ProductRepository : IProductRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT p.id, p.store_id as StoreId, p.category_id as CategoryId, p.name, p.slug,
-                   p.description, p.short_description as ShortDescription, p.sku, p.barcode,
-                   p.price, p.compare_at_price as CompareAtPrice, p.currency, p.status,
-                   p.stock_quantity as StockQuantity, p.track_inventory as TrackInventory,
-                   p.tags, p.rating, p.total_reviews as TotalReviews, p.total_sold as TotalSold,
-                   p.view_count as ViewCount, p.is_featured as IsFeatured, p.is_digital as IsDigital,
-                   p.seo_title as SeoTitle, p.seo_description as SeoDescription,
-                   p.attributes, p.published_at as PublishedAt, p.created_at as CreatedAt,
-                   s.name as StoreName, s.slug as StoreSlug,
-                   c.name as CategoryName
+            SELECT p."Id", p."StoreId", p."CategoryId", p."Name", p."Slug",
+                   p."Description", p."ShortDescription", p."Sku", p."Barcode",
+                   p."Price", p."CompareAtPrice", p."Currency", p."Status",
+                   p."StockQuantity", p."TrackInventory",
+                   p."Tags", p."Rating", p."TotalReviews", p."TotalSold",
+                   p."ViewCount", p."IsFeatured", p."IsDigital",
+                   p."SeoTitle", p."SeoDescription",
+                   p."Attributes", p."PublishedAt", p."CreatedAt",
+                   s."Name" as StoreName, s."Slug" as StoreSlug,
+                   c."Name" as CategoryName
             FROM products p
-            JOIN stores s ON p.store_id = s.id
-            JOIN categories c ON p.category_id = c.id
-            WHERE p.id = @Id AND p.is_deleted = false
+            JOIN stores s ON p."StoreId" = s."Id"
+            JOIN "Categories" c ON p."CategoryId" = c."Id"
+            WHERE p."Id" = @Id AND p."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ProductDto>(sql, new { Id = id });
@@ -56,19 +56,19 @@ public class ProductRepository : IProductRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT p.id, p.store_id as StoreId, p.category_id as CategoryId, p.name, p.slug,
-                   p.description, p.short_description as ShortDescription, p.sku,
-                   p.price, p.compare_at_price as CompareAtPrice, p.currency, p.status,
-                   p.stock_quantity as StockQuantity, p.tags, p.rating,
-                   p.total_reviews as TotalReviews, p.total_sold as TotalSold,
-                   p.is_featured as IsFeatured, p.is_digital as IsDigital,
-                   p.created_at as CreatedAt,
-                   s.name as StoreName, s.slug as StoreSlug,
-                   c.name as CategoryName
+            SELECT p."Id", p."StoreId", p."CategoryId", p."Name", p."Slug",
+                   p."Description", p."ShortDescription", p."Sku",
+                   p."Price", p."CompareAtPrice", p."Currency", p."Status",
+                   p."StockQuantity", p."Tags", p."Rating",
+                   p."TotalReviews", p."TotalSold",
+                   p."IsFeatured", p."IsDigital",
+                   p."CreatedAt",
+                   s."Name" as StoreName, s."Slug" as StoreSlug,
+                   c."Name" as CategoryName
             FROM products p
-            JOIN stores s ON p.store_id = s.id
-            JOIN categories c ON p.category_id = c.id
-            WHERE p.slug = @Slug AND p.is_deleted = false
+            JOIN stores s ON p."StoreId" = s."Id"
+            JOIN "Categories" c ON p."CategoryId" = c."Id"
+            WHERE p."Slug" = @Slug AND p."IsDeleted" = false
             """;
 
         return await connection.QuerySingleOrDefaultAsync<ProductDto>(sql, new { Slug = slug });
@@ -78,33 +78,33 @@ public class ProductRepository : IProductRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = "WHERE p.is_deleted = false AND p.status = @ActiveStatus";
+        var whereClause = "WHERE p.\"IsDeleted\" = false AND p.\"Status\" = @ActiveStatus";
         var parameters = new DynamicParameters();
         parameters.Add("ActiveStatus", (int)ProductStatus.Active);
 
         if (!string.IsNullOrEmpty(query.Search))
         {
-            whereClause += " AND (p.name ILIKE @Search OR p.description ILIKE @Search OR p.tags ILIKE @Search)";
+            whereClause += " AND (p.\"Name\" ILIKE @Search OR p.\"Description\" ILIKE @Search OR p.\"Tags\" ILIKE @Search)";
             parameters.Add("Search", $"%{query.Search}%");
         }
         if (query.CategoryId.HasValue)
         {
-            whereClause += " AND p.category_id = @CategoryId";
+            whereClause += " AND p.\"CategoryId\" = @CategoryId";
             parameters.Add("CategoryId", query.CategoryId);
         }
         if (query.StoreId.HasValue)
         {
-            whereClause += " AND p.store_id = @StoreId";
+            whereClause += " AND p.\"StoreId\" = @StoreId";
             parameters.Add("StoreId", query.StoreId);
         }
         if (query.MinPrice.HasValue)
         {
-            whereClause += " AND p.price >= @MinPrice";
+            whereClause += " AND p.\"Price\" >= @MinPrice";
             parameters.Add("MinPrice", query.MinPrice);
         }
         if (query.MaxPrice.HasValue)
         {
-            whereClause += " AND p.price <= @MaxPrice";
+            whereClause += " AND p.\"Price\" <= @MaxPrice";
             parameters.Add("MaxPrice", query.MaxPrice);
         }
 
@@ -113,28 +113,28 @@ public class ProductRepository : IProductRepository
 
         var orderBy = query.SortBy?.ToLower() switch
         {
-            "price_asc" => "p.price ASC",
-            "price_desc" => "p.price DESC",
-            "rating" => "p.rating DESC",
-            "newest" => "p.created_at DESC",
-            "popular" => "p.total_sold DESC",
-            _ => "p.is_featured DESC, p.created_at DESC"
+            "price_asc" => "p.\"Price\" ASC",
+            "price_desc" => "p.\"Price\" DESC",
+            "rating" => "p.\"Rating\" DESC",
+            "newest" => "p.\"CreatedAt\" DESC",
+            "popular" => "p.\"TotalSold\" DESC",
+            _ => "p.\"IsFeatured\" DESC, p.\"CreatedAt\" DESC"
         };
 
         parameters.Add("PageSize", query.PageSize);
         parameters.Add("Offset", (query.Page - 1) * query.PageSize);
 
         var sql = $"""
-            SELECT p.id, p.name, p.slug, p.price, p.compare_at_price as CompareAtPrice, p.currency,
-                   p.rating, p.total_reviews as TotalReviews, p.total_sold as TotalSold,
-                   p.is_featured as IsFeatured, p.stock_quantity as StockQuantity,
-                   p.created_at as CreatedAt,
-                   s.name as StoreName, s.slug as StoreSlug,
-                   c.name as CategoryName,
-                   (SELECT url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true AND pi.is_deleted = false LIMIT 1) as ImageUrl
+            SELECT p."Id", p."Name", p."Slug", p."Price", p."CompareAtPrice", p."Currency",
+                   p."Rating", p."TotalReviews", p."TotalSold",
+                   p."IsFeatured", p."StockQuantity",
+                   p."CreatedAt",
+                   s."Name" as StoreName, s."Slug" as StoreSlug,
+                   c."Name" as CategoryName,
+                   (SELECT pi."Url" FROM product_images pi WHERE pi."ProductId" = p."Id" AND pi."IsPrimary" = true AND pi."IsDeleted" = false LIMIT 1) as ImageUrl
             FROM products p
-            JOIN stores s ON p.store_id = s.id
-            JOIN categories c ON p.category_id = c.id
+            JOIN stores s ON p."StoreId" = s."Id"
+            JOIN "Categories" c ON p."CategoryId" = c."Id"
             {whereClause}
             ORDER BY {orderBy}
             LIMIT @PageSize OFFSET @Offset
@@ -149,15 +149,15 @@ public class ProductRepository : IProductRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
         const string sql = """
-            SELECT p.id, p.name, p.slug, p.price, p.compare_at_price as CompareAtPrice, p.currency,
-                   p.rating, p.total_reviews as TotalReviews, p.total_sold as TotalSold,
-                   p.status, p.stock_quantity as StockQuantity, p.created_at as CreatedAt,
-                   c.name as CategoryName,
-                   (SELECT url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = true LIMIT 1) as ImageUrl
+            SELECT p."Id", p."Name", p."Slug", p."Price", p."CompareAtPrice", p."Currency",
+                   p."Rating", p."TotalReviews", p."TotalSold",
+                   p."Status", p."StockQuantity", p."CreatedAt",
+                   c."Name" as CategoryName,
+                   (SELECT pi."Url" FROM product_images pi WHERE pi."ProductId" = p."Id" AND pi."IsPrimary" = true LIMIT 1) as ImageUrl
             FROM products p
-            JOIN categories c ON p.category_id = c.id
-            WHERE p.store_id = @StoreId AND p.is_deleted = false
-            ORDER BY p.created_at DESC
+            JOIN "Categories" c ON p."CategoryId" = c."Id"
+            WHERE p."StoreId" = @StoreId AND p."IsDeleted" = false
+            ORDER BY p."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """;
 
@@ -177,13 +177,17 @@ public class ProductRepository : IProductRepository
         var slug = dto.Name.ToLower().Replace(" ", "-").Replace("'", "").Replace("\"", "");
 
         const string sql = """
-            INSERT INTO products (id, store_id, category_id, name, slug, description, short_description,
-                                 sku, price, compare_at_price, currency, status, stock_quantity,
-                                 track_inventory, tags, is_digital, created_at, is_deleted)
+            INSERT INTO products ("Id", "StoreId", "CategoryId", "Name", "Slug", "Description", "ShortDescription",
+                                 "Sku", "Price", "CompareAtPrice", "Currency", "Status", "StockQuantity",
+                                 "TrackInventory", "AllowBackorder", "Tags",
+                                 "Rating", "TotalReviews", "TotalSold", "ViewCount",
+                                 "IsFeatured", "IsDigital", "CreatedAt", "IsDeleted")
             VALUES (@Id, @StoreId, @CategoryId, @Name, @Slug, @Description, @ShortDescription,
                    @Sku, @Price, @CompareAtPrice, @Currency, @Status, @StockQuantity,
-                   @TrackInventory, @Tags, @IsDigital, NOW(), false)
-            RETURNING id
+                   @TrackInventory, false, @Tags,
+                   0, 0, 0, 0,
+                   false, @IsDigital, NOW(), false)
+            RETURNING "Id"
             """;
 
         return await connection.ExecuteScalarAsync<Guid>(sql, new
@@ -215,19 +219,19 @@ public class ProductRepository : IProductRepository
         var parameters = new DynamicParameters();
         parameters.Add("Id", id);
 
-        if (dto.Name != null) { updates.Add("name = @Name"); parameters.Add("Name", dto.Name); }
-        if (dto.Description != null) { updates.Add("description = @Description"); parameters.Add("Description", dto.Description); }
-        if (dto.Price.HasValue) { updates.Add("price = @Price"); parameters.Add("Price", dto.Price); }
-        if (dto.CompareAtPrice.HasValue) { updates.Add("compare_at_price = @CompareAtPrice"); parameters.Add("CompareAtPrice", dto.CompareAtPrice); }
-        if (dto.StockQuantity.HasValue) { updates.Add("stock_quantity = @StockQuantity"); parameters.Add("StockQuantity", dto.StockQuantity); }
-        if (dto.Status.HasValue) { updates.Add("status = @Status"); parameters.Add("Status", dto.Status); }
-        if (dto.Tags != null) { updates.Add("tags = @Tags"); parameters.Add("Tags", dto.Tags); }
-        if (dto.CategoryId.HasValue) { updates.Add("category_id = @CategoryId"); parameters.Add("CategoryId", dto.CategoryId); }
+        if (dto.Name != null) { updates.Add("\"Name\" = @Name"); parameters.Add("Name", dto.Name); }
+        if (dto.Description != null) { updates.Add("\"Description\" = @Description"); parameters.Add("Description", dto.Description); }
+        if (dto.Price.HasValue) { updates.Add("\"Price\" = @Price"); parameters.Add("Price", dto.Price); }
+        if (dto.CompareAtPrice.HasValue) { updates.Add("\"CompareAtPrice\" = @CompareAtPrice"); parameters.Add("CompareAtPrice", dto.CompareAtPrice); }
+        if (dto.StockQuantity.HasValue) { updates.Add("\"StockQuantity\" = @StockQuantity"); parameters.Add("StockQuantity", dto.StockQuantity); }
+        if (dto.Status.HasValue) { updates.Add("\"Status\" = @Status"); parameters.Add("Status", dto.Status); }
+        if (dto.Tags != null) { updates.Add("\"Tags\" = @Tags"); parameters.Add("Tags", dto.Tags); }
+        if (dto.CategoryId.HasValue) { updates.Add("\"CategoryId\" = @CategoryId"); parameters.Add("CategoryId", dto.CategoryId); }
 
         if (updates.Count == 0) return true;
-        updates.Add("updated_at = NOW()");
+        updates.Add("\"UpdatedAt\" = NOW()");
 
-        var sql = $"UPDATE products SET {string.Join(", ", updates)} WHERE id = @Id AND is_deleted = false";
+        var sql = $"UPDATE products SET {string.Join(", ", updates)} WHERE \"Id\" = @Id AND \"IsDeleted\" = false";
         return await connection.ExecuteAsync(sql, parameters) > 0;
     }
 
@@ -235,7 +239,7 @@ public class ProductRepository : IProductRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            "UPDATE products SET is_deleted = true, deleted_at = NOW() WHERE id = @Id", new { Id = id }) > 0;
+            "UPDATE products SET \"IsDeleted\" = true, \"DeletedAt\" = NOW() WHERE \"Id\" = @Id", new { Id = id }) > 0;
     }
 
     public async Task<IEnumerable<ProductImageDto>> GetImagesAsync(Guid productId)
@@ -243,8 +247,8 @@ public class ProductRepository : IProductRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QueryAsync<ProductImageDto>(
             """
-            SELECT id, url, thumbnail_url as ThumbnailUrl, alt_text as AltText, sort_order as SortOrder, is_primary as IsPrimary
-            FROM product_images WHERE product_id = @ProductId AND is_deleted = false ORDER BY sort_order
+            SELECT "Id", "Url", "ThumbnailUrl", "AltText", "SortOrder", "IsPrimary"
+            FROM product_images WHERE "ProductId" = @ProductId AND "IsDeleted" = false ORDER BY "SortOrder"
             """, new { ProductId = productId });
     }
 
@@ -253,9 +257,9 @@ public class ProductRepository : IProductRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QueryAsync<ProductVariantDto>(
             """
-            SELECT id, name, sku, price, compare_at_price as CompareAtPrice, stock_quantity as StockQuantity,
-                   status, image_url as ImageUrl, attributes
-            FROM product_variants WHERE product_id = @ProductId AND is_deleted = false ORDER BY sort_order
+            SELECT "Id", "Name", "Sku", "Price", "CompareAtPrice", "StockQuantity",
+                   "Status", "ImageUrl", "Attributes"
+            FROM product_variants WHERE "ProductId" = @ProductId AND "IsDeleted" = false ORDER BY "SortOrder"
             """, new { ProductId = productId });
     }
 
@@ -264,13 +268,13 @@ public class ProductRepository : IProductRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QueryAsync<ProductReviewDto>(
             """
-            SELECT r.id, r.rating, r.title, r.content, r.is_verified_purchase as IsVerifiedPurchase,
-                   r.helpful_count as HelpfulCount, r.created_at as CreatedAt,
-                   u.first_name || ' ' || u.last_name as ReviewerName, u.avatar_url as ReviewerAvatarUrl
+            SELECT r."Id", r."Rating", r."Title", r."Content", r."IsVerifiedPurchase",
+                   r."HelpfulCount", r."CreatedAt",
+                   u."FirstName" || ' ' || u."LastName" as ReviewerName, u."AvatarUrl" as ReviewerAvatarUrl
             FROM reviews r
-            JOIN users u ON r.reviewer_id = u.id
-            WHERE r.product_id = @ProductId AND r.is_deleted = false
-            ORDER BY r.created_at DESC
+            JOIN users u ON r."ReviewerId" = u."Id"
+            WHERE r."ProductId" = @ProductId AND r."IsDeleted" = false
+            ORDER BY r."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset
             """, new { ProductId = productId, PageSize = pageSize, Offset = (page - 1) * pageSize });
     }

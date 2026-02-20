@@ -33,20 +33,23 @@ public class SearchRepository : ISearchRepository
         var searchPattern = $"%{query}%";
 
         return await connection.QueryAsync<UserSearchResult>(
-            @"SELECT u.id, u.display_name, u.email, u.avatar_url, u.headline, u.location,
-                     (SELECT COUNT(*) FROM connections WHERE (requester_id = u.id OR addressee_id = u.id) AND status = 1) as connection_count
+            @"SELECT u.""Id"", u.""FirstName"" || ' ' || u.""LastName"" as DisplayName,
+                     u.""Email"", u.""AvatarUrl"", up.""Headline"",
+                     u.""City"" || ', ' || u.""Country"" as Location,
+                     (SELECT COUNT(*) FROM connections WHERE (requester_id = u.""Id"" OR addressee_id = u.""Id"") AND status = 1) as ConnectionCount
               FROM users u
-              WHERE u.is_active = true
-              AND (u.display_name ILIKE @Pattern OR u.headline ILIKE @Pattern OR u.email ILIKE @Pattern)
-              AND (@Location IS NULL OR u.location ILIKE @LocationPattern)
+              LEFT JOIN user_profiles up ON up.""UserId"" = u.""Id"" AND up.""IsDeleted"" = false
+              WHERE u.""IsDeleted"" = false AND u.""Status"" = 1
+              AND (u.""FirstName"" ILIKE @Pattern OR u.""LastName"" ILIKE @Pattern OR u.""Email"" ILIKE @Pattern OR up.""Headline"" ILIKE @Pattern)
+              AND (@Location IS NULL OR u.""City"" ILIKE @LocationPattern OR u.""Country"" ILIKE @LocationPattern)
               AND (@Skills IS NULL OR EXISTS (
                   SELECT 1 FROM user_skills us 
-                  INNER JOIN skills s ON us.skill_id = s.id 
-                  WHERE us.user_id = u.id AND s.name = ANY(@Skills)
+                  INNER JOIN skills s ON us.""SkillId"" = s.""Id"" 
+                  WHERE us.""UserId"" = u.""Id"" AND s.""Name"" = ANY(@Skills)
               ))
               ORDER BY 
-                  CASE WHEN u.display_name ILIKE @Pattern THEN 0 ELSE 1 END,
-                  connection_count DESC
+                  CASE WHEN u.""FirstName"" ILIKE @Pattern THEN 0 ELSE 1 END,
+                  ConnectionCount DESC
               LIMIT @PageSize OFFSET @Offset",
             new 
             { 
@@ -66,18 +69,19 @@ public class SearchRepository : ISearchRepository
         var searchPattern = $"%{query}%";
 
         return await connection.QueryAsync<ServiceSearchResult>(
-            @"SELECT s.id, s.title, s.description, s.price, s.currency, s.delivery_days,
-                     s.rating, s.review_count, s.order_count, s.seller_id, u.display_name as seller_name
-              FROM services s
-              INNER JOIN users u ON s.seller_id = u.id
-              WHERE s.is_active = true
-              AND (s.title ILIKE @Pattern OR s.description ILIKE @Pattern)
-              AND (@MinPrice IS NULL OR s.price >= @MinPrice)
-              AND (@MaxPrice IS NULL OR s.price <= @MaxPrice)
-              AND (@Category IS NULL OR s.category_id = @Category)
+            @"SELECT s.""Id"", s.""Title"", s.""Description"", s.""BasePrice"" as Price, s.""Currency"", s.""DeliveryTime"" as DeliveryDays,
+                     s.""Rating"", s.""TotalReviews"" as ReviewCount, s.""TotalOrders"" as OrderCount,
+                     s.""SellerId"", u.""FirstName"" || ' ' || u.""LastName"" as SellerName
+              FROM ""Services"" s
+              INNER JOIN users u ON s.""SellerId"" = u.""Id""
+              WHERE s.""IsDeleted"" = false AND s.""Status"" = 1
+              AND (s.""Title"" ILIKE @Pattern OR s.""Description"" ILIKE @Pattern)
+              AND (@MinPrice IS NULL OR s.""BasePrice"" >= @MinPrice)
+              AND (@MaxPrice IS NULL OR s.""BasePrice"" <= @MaxPrice)
+              AND (@Category IS NULL OR s.""CategoryId"" = @Category)
               ORDER BY 
-                  CASE WHEN s.title ILIKE @Pattern THEN 0 ELSE 1 END,
-                  s.rating DESC, s.order_count DESC
+                  CASE WHEN s.""Title"" ILIKE @Pattern THEN 0 ELSE 1 END,
+                  s.""Rating"" DESC, s.""TotalOrders"" DESC
               LIMIT @PageSize OFFSET @Offset",
             new
             {
@@ -97,17 +101,17 @@ public class SearchRepository : ISearchRepository
         var searchPattern = $"%{query}%";
 
         return await connection.QueryAsync<ProjectSearchResult>(
-            @"SELECT p.id, p.title, p.description, p.budget_min, p.budget_max, p.currency,
-                     p.status, p.bid_count, p.created_at, p.deadline
+            @"SELECT p.""Id"", p.""Title"", p.""Description"", p.""BudgetMin"", p.""BudgetMax"", p.""Currency"",
+                     p.""Status"", p.""BidCount"", p.""CreatedAt"", p.""Deadline""
               FROM projects p
-              WHERE p.is_active = true
-              AND (p.title ILIKE @Pattern OR p.description ILIKE @Pattern)
-              AND (@MinBudget IS NULL OR p.budget_max >= @MinBudget)
-              AND (@MaxBudget IS NULL OR p.budget_min <= @MaxBudget)
-              AND (@Status IS NULL OR p.status = @Status)
+              WHERE p.""IsDeleted"" = false AND p.""Status"" != 0
+              AND (p.""Title"" ILIKE @Pattern OR p.""Description"" ILIKE @Pattern)
+              AND (@MinBudget IS NULL OR p.""BudgetMax"" >= @MinBudget)
+              AND (@MaxBudget IS NULL OR p.""BudgetMin"" <= @MaxBudget)
+              AND (@Status IS NULL OR p.""Status"" = @Status)
               ORDER BY 
-                  CASE WHEN p.title ILIKE @Pattern THEN 0 ELSE 1 END,
-                  p.created_at DESC
+                  CASE WHEN p.""Title"" ILIKE @Pattern THEN 0 ELSE 1 END,
+                  p.""CreatedAt"" DESC
               LIMIT @PageSize OFFSET @Offset",
             new
             {
@@ -127,8 +131,8 @@ public class SearchRepository : ISearchRepository
         var searchPattern = $"%{query}%";
 
         return await connection.QueryAsync<CompanySearchResult>(
-            @"SELECT p.id, p.name, p.slug, p.description, p.logo_url, p.industry,
-                     p.headquarters, p.employee_count, p.follower_count, p.is_verified
+            @"SELECT p.id, p.name, p.slug, p.description, p.logo_url as LogoUrl, p.industry,
+                     p.headquarters, p.employee_count as EmployeeCount, p.follower_count as FollowerCount, p.is_verified as IsVerified
               FROM pages p
               WHERE p.is_active = true AND p.type IN (0, 1, 3)
               AND (p.name ILIKE @Pattern OR p.description ILIKE @Pattern OR p.industry ILIKE @Pattern)
@@ -157,10 +161,11 @@ public class SearchRepository : ISearchRepository
         var searchPattern = $"%{query}%";
 
         return await connection.QueryAsync<PostSearchResult>(
-            @"SELECT p.id, p.content, p.type, p.author_id, u.display_name as author_name,
-                     p.like_count, p.comment_count, p.share_count, p.created_at
+            @"SELECT p.id, p.content, p.type, p.author_id as AuthorId,
+                     u.""FirstName"" || ' ' || u.""LastName"" as AuthorName,
+                     p.like_count as LikeCount, p.comment_count as CommentCount, p.share_count as ShareCount, p.created_at as CreatedAt
               FROM posts p
-              INNER JOIN users u ON p.author_id = u.id
+              INNER JOIN users u ON p.author_id = u.""Id""
               WHERE p.is_active = true AND p.visibility = 0
               AND p.content ILIKE @Pattern
               ORDER BY p.created_at DESC
