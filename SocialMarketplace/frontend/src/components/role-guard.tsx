@@ -51,8 +51,8 @@ export function RoleGuard({
 
   const hasAccess =
     isAuthenticated &&
-    user?.role &&
-    allowedRoles.includes(user.role as UserRole);
+    user?.roles?.length &&
+    user.roles.some((r) => allowedRoles.includes(r as UserRole));
 
   useEffect(() => {
     if (!hasAccess && redirectTo) {
@@ -77,12 +77,12 @@ export function RoleGuard({
 export function useRole(role: UserRole | UserRole[]): boolean {
   const { user, isAuthenticated } = useAuthStore();
 
-  if (!isAuthenticated || !user?.role) {
+  if (!isAuthenticated || !user?.roles?.length) {
     return false;
   }
 
-  const roles = Array.isArray(role) ? role : [role];
-  return roles.includes(user.role as UserRole);
+  const allowedRoles = Array.isArray(role) ? role : [role];
+  return user.roles.some((r) => allowedRoles.includes(r as UserRole));
 }
 
 /**

@@ -17,6 +17,7 @@ using Marketplace.Slices.Social.Connections;
 using Marketplace.Slices.PortfolioSlice;
 using Marketplace.Slices.ResumeSlice;
 using Marketplace.Slices.DesignSlice;
+using Marketplace.Slices.KhataSlice;
 
 namespace Marketplace.Slices;
 
@@ -91,6 +92,10 @@ public static class ServiceCollectionExtensions
         // Design
         services.AddScoped<IDesignRepository, DesignRepository>();
         services.AddScoped<IDesignService, DesignService>();
+
+        // Khata / Ledger
+        services.AddScoped<IKhataRepository, KhataRepository>();
+        services.AddScoped<IKhataService, KhataService>();
 
         return services;
     }

@@ -7,12 +7,102 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000,
 });
+
+// --- Token Refresh Queue ---
+// Prevents multiple concurrent refresh requests by queuing 401 retries
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+function processQueue(error: unknown, token: string | null = null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error);
+    else if (token) resolve(token);
+  });
+  failedQueue = [];
+}
+
+function getStoredToken(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredToken(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch { /* storage full or unavailable */ }
+}
+
+function clearStoredTokens() {
+  try {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+  } catch { /* ignore */ }
+}
+
+// --- Background Token Refresh ---
+// Proactively refreshes the token before it expires
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+function parseJwtExp(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+async function performTokenRefresh(): Promise<string | null> {
+  const refreshToken = getStoredToken('refreshToken');
+  if (!refreshToken) return null;
+
+  try {
+    const response = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken });
+    const { accessToken, refreshToken: newRefreshToken } = response.data;
+    setStoredToken('accessToken', accessToken);
+    setStoredToken('refreshToken', newRefreshToken);
+    scheduleTokenRefresh(accessToken);
+    return accessToken;
+  } catch {
+    clearStoredTokens();
+    return null;
+  }
+}
+
+export function scheduleTokenRefresh(token: string) {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  const exp = parseJwtExp(token);
+  if (!exp) return;
+
+  // Refresh 2 minutes before expiry, minimum 10 seconds from now
+  const refreshAt = Math.max(exp - Date.now() - 120_000, 10_000);
+  refreshTimer = setTimeout(async () => {
+    const newToken = await performTokenRefresh();
+    if (!newToken && typeof window !== 'undefined') {
+      window.location.href = '/auth/login';
+    }
+  }, refreshAt);
+}
+
+// Initialize background refresh on load
+if (typeof window !== 'undefined') {
+  const existingToken = getStoredToken('accessToken');
+  if (existingToken) scheduleTokenRefresh(existingToken);
+}
 
 // Request interceptor
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const token = getStoredToken('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -21,38 +111,43 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor
+// Response interceptor with queued refresh
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    
-    // If 401 and we haven't tried to refresh yet
+
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        });
+      }
+
       originalRequest._retry = true;
-      
+      isRefreshing = true;
+
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const response = await axios.post(`${API_URL}/api/auth/refresh`, {
-            refreshToken,
-          });
-          
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
-          localStorage.setItem('accessToken', accessToken);
-          localStorage.setItem('refreshToken', newRefreshToken);
-          
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        const newToken = await performTokenRefresh();
+        if (newToken) {
+          processQueue(null, newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         }
+        processQueue(new Error('Token refresh failed'));
+        if (typeof window !== 'undefined') window.location.href = '/auth/login';
       } catch (refreshError) {
-        // Refresh failed, redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/auth/login';
+        processQueue(refreshError);
+        clearStoredTokens();
+        if (typeof window !== 'undefined') window.location.href = '/auth/login';
+      } finally {
+        isRefreshing = false;
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -326,4 +421,160 @@ export const companyApi = {
     api.post(`/companies/${companyId}/employees`, data),
   removeEmployee: (companyId: string, userId: string) =>
     api.delete(`/companies/${companyId}/employees/${userId}`),
+};
+
+// Post/Feed API (LinkedIn-style posts)
+export const postApi = {
+  getFeed: (params?: { page?: number; pageSize?: number; type?: string }) =>
+    api.get('/posts/feed', { params }),
+  getById: (id: string) => api.get(`/posts/${id}`),
+  getByUser: (userId: string, params?: { page?: number; pageSize?: number }) =>
+    api.get(`/posts/user/${userId}`, { params }),
+  create: (data: FormData) => api.post('/posts', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/posts/${id}`, data),
+  delete: (id: string) => api.delete(`/posts/${id}`),
+  react: (id: string, type: string) => api.post(`/posts/${id}/reactions`, { type }),
+  removeReaction: (id: string) => api.delete(`/posts/${id}/reactions`),
+  getComments: (id: string, params?: { page?: number; pageSize?: number }) =>
+    api.get(`/posts/${id}/comments`, { params }),
+  addComment: (id: string, data: { content: string; parentId?: string }) =>
+    api.post(`/posts/${id}/comments`, data),
+  share: (id: string, data?: { content?: string }) => api.post(`/posts/${id}/share`, data),
+  report: (id: string, reason: string) => api.post(`/posts/${id}/report`, { reason }),
+  bookmark: (id: string) => api.post(`/posts/${id}/bookmark`),
+  removeBookmark: (id: string) => api.delete(`/posts/${id}/bookmark`),
+  getBookmarks: (params?: { page?: number; pageSize?: number }) =>
+    api.get('/posts/bookmarks', { params }),
+  getTrending: (params?: { timeframe?: string; limit?: number }) =>
+    api.get('/posts/trending', { params }),
+};
+
+// Khata/Ledger API (Pakistani-style credit/debit tracking)
+export const khataApi = {
+  getAll: (params?: { page?: number; pageSize?: number; search?: string; status?: string }) =>
+    api.get('/khata', { params }),
+  getById: (id: string) => api.get(`/khata/${id}`),
+  create: (data: {
+    partyName: string;
+    partyPhone?: string;
+    partyAddress?: string;
+    type: 'customer' | 'supplier';
+    openingBalance?: number;
+  }) => api.post('/khata', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/khata/${id}`, data),
+  delete: (id: string) => api.delete(`/khata/${id}`),
+  getEntries: (id: string, params?: { page?: number; pageSize?: number; type?: string; from?: string; to?: string }) =>
+    api.get(`/khata/${id}/entries`, { params }),
+  addEntry: (id: string, data: {
+    amount: number;
+    type: 'credit' | 'debit';
+    description: string;
+    date?: string;
+    attachmentUrl?: string;
+  }) => api.post(`/khata/${id}/entries`, data),
+  updateEntry: (id: string, entryId: string, data: Record<string, unknown>) =>
+    api.patch(`/khata/${id}/entries/${entryId}`, data),
+  deleteEntry: (id: string, entryId: string) =>
+    api.delete(`/khata/${id}/entries/${entryId}`),
+  getBalance: (id: string) => api.get(`/khata/${id}/balance`),
+  getSummary: (params?: { from?: string; to?: string }) =>
+    api.get('/khata/summary', { params }),
+  export: (params?: { format?: 'pdf' | 'csv' | 'excel'; from?: string; to?: string }) =>
+    api.get('/khata/export', { params, responseType: 'blob' }),
+  sendReminder: (id: string) => api.post(`/khata/${id}/reminder`),
+};
+
+// Invoice API
+export const invoiceApi = {
+  getAll: (params?: { page?: number; pageSize?: number; status?: string; from?: string; to?: string }) =>
+    api.get('/invoices', { params }),
+  getById: (id: string) => api.get(`/invoices/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/invoices', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/invoices/${id}`, data),
+  delete: (id: string) => api.delete(`/invoices/${id}`),
+  send: (id: string) => api.post(`/invoices/${id}/send`),
+  markPaid: (id: string, data?: { paymentMethod?: string; paidAt?: string }) =>
+    api.post(`/invoices/${id}/mark-paid`, data),
+  duplicate: (id: string) => api.post(`/invoices/${id}/duplicate`),
+  getPublic: (token: string) => api.get(`/invoices/public/${token}`),
+  export: (id: string, format?: 'pdf') =>
+    api.get(`/invoices/${id}/export`, { params: { format }, responseType: 'blob' }),
+  getSummary: (params?: { from?: string; to?: string }) =>
+    api.get('/invoices/summary', { params }),
+  getRecurring: () => api.get('/invoices/recurring'),
+  createRecurring: (data: Record<string, unknown>) => api.post('/invoices/recurring', data),
+};
+
+// Inventory API
+export const inventoryApi = {
+  getAll: (params?: { page?: number; pageSize?: number; search?: string; category?: string; lowStock?: boolean }) =>
+    api.get('/inventory', { params }),
+  getById: (id: string) => api.get(`/inventory/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/inventory', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/inventory/${id}`, data),
+  delete: (id: string) => api.delete(`/inventory/${id}`),
+  adjustStock: (id: string, data: { quantity: number; type: 'add' | 'remove' | 'set'; reason: string }) =>
+    api.post(`/inventory/${id}/adjust`, data),
+  getMovements: (id: string, params?: { page?: number; pageSize?: number }) =>
+    api.get(`/inventory/${id}/movements`, { params }),
+  getLowStock: () => api.get('/inventory/low-stock'),
+  getCategories: () => api.get('/inventory/categories'),
+  export: (format?: 'csv' | 'excel') =>
+    api.get('/inventory/export', { params: { format }, responseType: 'blob' }),
+  importBulk: (data: FormData) =>
+    api.post('/inventory/import', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getValuation: () => api.get('/inventory/valuation'),
+};
+
+// Category API
+export const categoryApi = {
+  getAll: (params?: { type?: string; parentId?: string }) =>
+    api.get('/categories', { params }),
+  getById: (id: string) => api.get(`/categories/${id}`),
+  getTree: (type?: string) => api.get('/categories/tree', { params: type ? { type } : undefined }),
+  create: (data: { name: string; type: string; parentId?: string; icon?: string; description?: string }) =>
+    api.post('/categories', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/categories/${id}`, data),
+  delete: (id: string) => api.delete(`/categories/${id}`),
+};
+
+// Tender API (full implementation)
+export const tenderApi = {
+  getAll: (params?: { page?: number; pageSize?: number; status?: string; category?: string; search?: string }) =>
+    api.get('/tenders', { params }),
+  getById: (id: string) => api.get(`/tenders/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/tenders', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/tenders/${id}`, data),
+  delete: (id: string) => api.delete(`/tenders/${id}`),
+  getBids: (id: string) => api.get(`/tenders/${id}/bids`),
+  submitBid: (id: string, data: Record<string, unknown>) => api.post(`/tenders/${id}/bids`, data),
+  evaluateBids: (id: string) => api.post(`/tenders/${id}/evaluate`),
+  awardContract: (id: string, bidId: string) => api.post(`/tenders/${id}/award`, { bidId }),
+  getDocuments: (id: string) => api.get(`/tenders/${id}/documents`),
+  uploadDocument: (id: string, data: FormData) =>
+    api.post(`/tenders/${id}/documents`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getMyTenders: (params?: { page?: number; pageSize?: number }) =>
+    api.get('/tenders/my', { params }),
+  getMyBids: (params?: { page?: number; pageSize?: number }) =>
+    api.get('/tenders/my-bids', { params }),
+};
+
+// Analytics API
+export const analyticsApi = {
+  getDashboard: (params?: { from?: string; to?: string }) =>
+    api.get('/analytics/dashboard', { params }),
+  getRevenue: (params?: { from?: string; to?: string; granularity?: 'day' | 'week' | 'month' }) =>
+    api.get('/analytics/revenue', { params }),
+  getOrders: (params?: { from?: string; to?: string }) =>
+    api.get('/analytics/orders', { params }),
+  getCustomers: (params?: { from?: string; to?: string }) =>
+    api.get('/analytics/customers', { params }),
+  getProducts: (params?: { from?: string; to?: string; limit?: number }) =>
+    api.get('/analytics/products', { params }),
+  getTraffic: (params?: { from?: string; to?: string }) =>
+    api.get('/analytics/traffic', { params }),
+  getConversions: (params?: { from?: string; to?: string }) =>
+    api.get('/analytics/conversions', { params }),
+  exportReport: (type: string, params?: { from?: string; to?: string; format?: 'pdf' | 'csv' }) =>
+    api.get(`/analytics/export/${type}`, { params, responseType: 'blob' }),
 };

@@ -178,6 +178,7 @@ app.MapConnectionEndpoints();
 app.MapPortfolioEndpoints();
 app.MapResumeEndpoints();
 app.MapDesignEndpoints();
+app.MapKhataEndpoints();
 
 // Root endpoint
 app.MapGet("/", () => Results.Ok(new
@@ -188,22 +189,31 @@ app.MapGet("/", () => Results.Ok(new
     Documentation = "/swagger",
     Features = new[]
     {
-        "Authentication & Authorization",
+        "Authentication & Authorization (JWT + Refresh Tokens)",
         "User & Profile Management",
+        "Social Feed (Posts, Reactions, Comments)",
         "Marketplace (Stores, Products, Services)",
         "Orders & Transactions",
         "Projects & Freelancing",
+        "Government Tenders",
         "HR & Company Management",
         "Reviews & Ratings",
-        "Wallet & Escrow",
-        "Real-time Messaging",
-        "Social Networking",
+        "Wallet & Escrow Payments",
+        "Real-time Messaging (SignalR)",
+        "Social Networking (Connections, Follows)",
         "LinkedIn-level Search",
-        "Notifications",
+        "Notifications (Real-time + Push)",
         "Skills & Certifications",
         "Portfolio Builder",
         "Resume Management",
-        "Design Studio (Canva-like)"
+        "Design Studio (Canva-like)",
+        "Khata / Ledger (Credit-Debit Tracking)",
+        "Invoicing & Billing",
+        "Inventory Management",
+        "Analytics & Reporting",
+        "Multi-language (EN, UR, AR, ZH, ES)",
+        "Dark/Light Theme",
+        "Feature Flags"
     }
 }));
 

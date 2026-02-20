@@ -28,7 +28,7 @@ export function FeatureFlag({ flag, children, fallback = null }: FeatureFlagProp
   const { isFeatureEnabled } = useFeatureFlagsStore();
   const { user } = useAuthStore();
 
-  const enabled = isFeatureEnabled(flag, user?.role, user?.id);
+  const enabled = isFeatureEnabled(flag, user?.roles?.[0], user?.id);
 
   if (!enabled) {
     return <>{fallback}</>;
@@ -47,7 +47,7 @@ export function useFeatureFlag(flag: string): boolean {
   const { isFeatureEnabled } = useFeatureFlagsStore();
   const { user } = useAuthStore();
 
-  return isFeatureEnabled(flag, user?.role, user?.id);
+  return isFeatureEnabled(flag, user?.roles?.[0], user?.id);
 }
 
 /**
