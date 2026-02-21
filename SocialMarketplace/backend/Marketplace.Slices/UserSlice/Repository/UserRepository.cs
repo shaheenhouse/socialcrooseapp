@@ -343,4 +343,38 @@ public class UserRepository : IUserRepository
         var rowsAffected = await connection.ExecuteAsync(sql, new { UserId = userId, SkillId = skillId });
         return rowsAffected > 0;
     }
+
+    public async Task<IEnumerable<string>> GetUserRolesAsync(Guid userId)
+    {
+        using var connection = await _connectionFactory.CreateReadConnectionAsync();
+        
+        const string sql = """
+            SELECT r."Name"
+            FROM user_roles ur
+            JOIN roles r ON ur."RoleId" = r."Id"
+            WHERE ur."UserId" = @UserId 
+              AND ur."IsDeleted" = false
+              AND r."IsDeleted" = false
+              AND (ur."ExpiresAt" IS NULL OR ur."ExpiresAt" > NOW())
+            ORDER BY r."Priority" DESC
+            """;
+        
+        return await connection.QueryAsync<string>(sql, new { UserId = userId });
+    }
+
+    public async Task<bool> AssignDefaultRoleAsync(Guid userId)
+    {
+        using var connection = await _connectionFactory.CreateWriteConnectionAsync();
+        
+        const string sql = """
+            INSERT INTO user_roles ("Id", "UserId", "RoleId", "CreatedAt", "IsDeleted")
+            SELECT @NewId, @UserId, r."Id", NOW(), false
+            FROM roles r
+            WHERE r."Name" = 'User' AND r."IsDeleted" = false
+            ON CONFLICT DO NOTHING
+            """;
+        
+        var rowsAffected = await connection.ExecuteAsync(sql, new { NewId = Guid.NewGuid(), UserId = userId });
+        return rowsAffected > 0;
+    }
 }

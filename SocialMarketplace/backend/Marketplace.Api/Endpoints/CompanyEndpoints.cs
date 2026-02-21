@@ -40,6 +40,16 @@ public static class CompanyEndpoints
         })
         .WithName("GetCompanyBySlug");
 
+        group.MapGet("/my", async (HttpContext context, ICompanyService companyService) =>
+        {
+            var userId = GetUserId(context);
+            if (userId == null) return Results.Unauthorized();
+            var companies = await companyService.GetMyCompaniesAsync(userId.Value);
+            return Results.Ok(new { data = companies });
+        })
+        .RequireAuthorization()
+        .WithName("GetMyCompanies");
+
         group.MapPost("/", async (HttpContext context, [FromBody] CreateCompanyDto dto, ICompanyService companyService) =>
         {
             var userId = GetUserId(context);

@@ -20,6 +20,10 @@ public interface IUserRepository
     Task<UserProfileDto?> GetProfileAsync(Guid userId);
     Task<bool> UpdateProfileAsync(Guid userId, UpdateProfileDto dto);
     
+    // Roles
+    Task<IEnumerable<string>> GetUserRolesAsync(Guid userId);
+    Task<bool> AssignDefaultRoleAsync(Guid userId);
+    
     // Skills
     Task<IEnumerable<UserSkillDto>> GetUserSkillsAsync(Guid userId);
     Task<bool> AddUserSkillAsync(Guid userId, Guid skillId, string level, int yearsOfExperience);

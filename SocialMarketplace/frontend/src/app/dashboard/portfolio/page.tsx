@@ -2,72 +2,103 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  Globe,
-  Edit,
-  Eye,
-  EyeOff,
-  Plus,
+import type { Portfolio } from "@/types/portfolio";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Eye, 
+  EyeOff, 
+  ExternalLink, 
+  Copy, 
+  Check,
+  User as UserIcon,
   Briefcase,
   GraduationCap,
   Code,
   Award,
-  Languages,
-  FolderKanban,
-  User,
-  Save,
-  ExternalLink,
-  Trash2,
+  FolderGit2,
+  FileText,
+  Plus,
+  Globe,
+  Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
+import Link from "next/link";
 import { useAuthStore } from "@/store/auth-store";
 import { portfolioApi } from "@/lib/api";
-import Link from "next/link";
+import { toast } from "sonner";
+import { PersonalInfoForm } from "@/components/dashboard/personal-info-form";
+import { ExperienceSection } from "@/components/dashboard/experience-section";
+import { EducationSection } from "@/components/dashboard/education-section";
+import { SkillsSection } from "@/components/dashboard/skills-section";
+import { ProjectsSection } from "@/components/dashboard/projects-section";
+import { CertificationsSection } from "@/components/dashboard/certifications-section";
+import { AIResumeImport } from "@/components/dashboard/ai-resume-import";
 
-interface PortfolioData {
-  id: string;
-  userId: string;
-  slug: string;
-  isPublic: boolean;
-  theme: string;
-  personalInfo: string;
-  education: string;
-  experience: string;
-  skills: string;
-  roles: string;
-  certifications: string;
-  projects: string;
-  achievements: string;
-  languages: string;
-  resumes: string;
+function parsePortfolioData(raw: Record<string, unknown>): Portfolio {
+  return {
+    id: raw.id as string,
+    userId: raw.userId as string,
+    slug: raw.slug as string,
+    isPublic: raw.isPublic as boolean,
+    theme: (raw.theme as Portfolio["theme"]) || "dark",
+    personalInfo: typeof raw.personalInfo === "string" ? JSON.parse(raw.personalInfo) : raw.personalInfo || { fullName: "", title: "", email: "", location: "", bio: "", socialLinks: [] },
+    education: typeof raw.education === "string" ? JSON.parse(raw.education) : raw.education || [],
+    experience: typeof raw.experience === "string" ? JSON.parse(raw.experience) : raw.experience || [],
+    skills: typeof raw.skills === "string" ? JSON.parse(raw.skills) : raw.skills || [],
+    roles: typeof raw.roles === "string" ? JSON.parse(raw.roles) : raw.roles || [],
+    certifications: typeof raw.certifications === "string" ? JSON.parse(raw.certifications) : raw.certifications || [],
+    projects: typeof raw.projects === "string" ? JSON.parse(raw.projects) : raw.projects || [],
+    achievements: typeof raw.achievements === "string" ? JSON.parse(raw.achievements) : raw.achievements || [],
+    languages: typeof raw.languages === "string" ? JSON.parse(raw.languages) : raw.languages || [],
+    resumes: typeof raw.resumes === "string" ? JSON.parse(raw.resumes) : raw.resumes || [],
+    createdAt: raw.createdAt as string || new Date().toISOString(),
+    updatedAt: raw.updatedAt as string || new Date().toISOString(),
+  } as Portfolio;
+}
+
+function serializePortfolioForApi(portfolio: Portfolio): Record<string, unknown> {
+  return {
+    personalInfo: JSON.stringify(portfolio.personalInfo),
+    education: JSON.stringify(portfolio.education),
+    experience: JSON.stringify(portfolio.experience),
+    skills: JSON.stringify(portfolio.skills),
+    roles: JSON.stringify(portfolio.roles),
+    certifications: JSON.stringify(portfolio.certifications),
+    projects: JSON.stringify(portfolio.projects),
+    achievements: JSON.stringify(portfolio.achievements),
+    languages: JSON.stringify(portfolio.languages),
+    resumes: JSON.stringify(portfolio.resumes),
+    isPublic: portfolio.isPublic,
+  };
 }
 
 export default function PortfolioPage() {
   const { user } = useAuthStore();
-  const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [portfolioUrl, setPortfolioUrl] = useState("");
 
   useEffect(() => {
     loadPortfolio();
   }, []);
 
+  useEffect(() => {
+    if (portfolio?.slug && typeof window !== "undefined") {
+      setPortfolioUrl(`${window.location.origin}/p/${portfolio.slug}`);
+    }
+  }, [portfolio?.slug]);
+
   const loadPortfolio = async () => {
     try {
       const { data } = await portfolioApi.getMe();
-      setPortfolio(data);
+      if (data) {
+        setPortfolio(parsePortfolioData(data));
+      }
     } catch {
       setPortfolio(null);
     } finally {
@@ -78,7 +109,7 @@ export default function PortfolioPage() {
   const createPortfolio = async () => {
     try {
       const slug = user?.username || `user-${Date.now()}`;
-      const { data } = await portfolioApi.create({
+      await portfolioApi.create({
         slug,
         isPublic: false,
         theme: "dark",
@@ -95,20 +126,48 @@ export default function PortfolioPage() {
       });
       await loadPortfolio();
     } catch (err) {
-      console.error("Failed to create portfolio:", err);
+      toast.error("Failed to create portfolio");
     }
   };
 
-  const toggleVisibility = async () => {
-    if (!portfolio) return;
+  const savePortfolio = async (updatedPortfolio: Portfolio) => {
+    setIsSaving(true);
     try {
-      await portfolioApi.update(portfolio.id, {
-        isPublic: !portfolio.isPublic,
-      });
-      setPortfolio({ ...portfolio, isPublic: !portfolio.isPublic });
-    } catch (err) {
-      console.error("Failed to update visibility:", err);
+      await portfolioApi.update(updatedPortfolio.id, serializePortfolioForApi(updatedPortfolio));
+      setPortfolio(updatedPortfolio);
+    } catch {
+      toast.error("Failed to save changes");
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleToggleVisibility = async () => {
+    if (!portfolio) return;
+    setIsToggling(true);
+    try {
+      const newIsPublic = !portfolio.isPublic;
+      await portfolioApi.update(portfolio.id, { isPublic: newIsPublic });
+      setPortfolio({ ...portfolio, isPublic: newIsPublic });
+      toast.success(newIsPublic ? "Portfolio is now public" : "Portfolio is now private");
+    } catch {
+      toast.error("Failed to update visibility");
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    const fullUrl = `${window.location.origin}/p/${portfolio?.slug}`;
+    await navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    toast.success("URL copied to clipboard!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePortfolioUpdate = (updated: Portfolio) => {
+    setPortfolio(updated);
+    savePortfolio(updated);
   };
 
   if (loading) {
@@ -136,433 +195,164 @@ export default function PortfolioPage() {
     );
   }
 
-  const personalInfo = JSON.parse(portfolio.personalInfo || "{}");
-  const education = JSON.parse(portfolio.education || "[]");
-  const experience = JSON.parse(portfolio.experience || "[]");
-  const skills = JSON.parse(portfolio.skills || "[]");
-  const roles = JSON.parse(portfolio.roles || "[]");
-  const certifications = JSON.parse(portfolio.certifications || "[]");
-  const projects = JSON.parse(portfolio.projects || "[]");
-  const achievements = JSON.parse(portfolio.achievements || "[]");
-  const languages = JSON.parse(portfolio.languages || "[]");
+  const tabs = [
+    { id: "personal", label: "Personal Info", icon: UserIcon },
+    { id: "experience", label: "Experience", icon: Briefcase },
+    { id: "education", label: "Education", icon: GraduationCap },
+    { id: "skills", label: "Skills & Roles", icon: Code },
+    { id: "projects", label: "Projects", icon: FolderGit2 },
+    { id: "certifications", label: "Certifications", icon: Award },
+    { id: "resumes", label: "Resumes", icon: FileText },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">My Portfolio</h1>
-          <p className="text-muted-foreground">
-            Manage your professional portfolio
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            {portfolio.isPublic ? (
-              <Eye className="h-4 w-4 text-green-500" />
-            ) : (
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">My Portfolio</h1>
+            <p className="text-muted-foreground mt-1">Manage your portfolio and resume</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {isSaving && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </div>
             )}
-            <span className="text-sm">
-              {portfolio.isPublic ? "Public" : "Private"}
-            </span>
-            <Switch
-              checked={portfolio.isPublic}
-              onCheckedChange={toggleVisibility}
-            />
+            <Button
+              variant={portfolio.isPublic ? "default" : "secondary"}
+              onClick={handleToggleVisibility}
+              disabled={isToggling}
+            >
+              {portfolio.isPublic ? (
+                <>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Public
+                </>
+              ) : (
+                <>
+                  <EyeOff className="mr-2 h-4 w-4" />
+                  Private
+                </>
+              )}
+            </Button>
           </div>
-          {portfolio.isPublic && (
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={`/p/${portfolio.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                View Public
-              </a>
-            </Button>
-          )}
-          <Link href="/dashboard/resume">
-            <Button variant="outline" size="sm">
-              Resumes
-            </Button>
-          </Link>
         </div>
-      </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="experience">Experience</TabsTrigger>
-          <TabsTrigger value="skills">Skills</TabsTrigger>
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="education">Education</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="mt-6 space-y-6">
-          {/* Personal Info Card */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Personal Information
-                </CardTitle>
-                <CardDescription>
-                  Your basic profile information
-                </CardDescription>
-              </div>
-              <Button variant="outline" size="sm">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div>
-                <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">
-                  {personalInfo.fullName || "Not set"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Title</p>
-                <p className="font-medium">
-                  {personalInfo.title || "Not set"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-medium">
-                  {personalInfo.email || "Not set"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Location</p>
-                <p className="font-medium">
-                  {personalInfo.location || "Not set"}
-                </p>
-              </div>
-              <div className="md:col-span-2">
-                <p className="text-sm text-muted-foreground">Bio</p>
-                <p className="font-medium">
-                  {personalInfo.bio || "No bio added yet"}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Stats */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <Briefcase className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="text-2xl font-bold">{experience.length}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Experiences
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <Code className="h-8 w-8 text-green-500" />
-                <div>
-                  <p className="text-2xl font-bold">{skills.length}</p>
-                  <p className="text-sm text-muted-foreground">Skills</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <FolderKanban className="h-8 w-8 text-purple-500" />
-                <div>
-                  <p className="text-2xl font-bold">{projects.length}</p>
-                  <p className="text-sm text-muted-foreground">Projects</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <Award className="h-8 w-8 text-amber-500" />
-                <div>
-                  <p className="text-2xl font-bold">
-                    {certifications.length}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Certifications
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Roles */}
-          {roles.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Roles</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {roles.map((role: { id: string; title: string; level: string }) => (
-                    <Badge key={role.id} variant="secondary" className="px-3 py-1">
-                      {role.title} - {role.level}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="experience" className="mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Work Experience</h2>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Experience
-            </Button>
-          </div>
-          {experience.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Briefcase className="h-12 w-12 text-muted-foreground/50" />
-                <p className="mt-4 text-muted-foreground">
-                  No experience added yet
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            experience.map((exp: { id: string; title: string; company: string; location: string; startDate: string; endDate?: string; current: boolean; description: string; technologies?: string[] }) => (
-              <Card key={exp.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">{exp.title}</h3>
-                      <p className="text-muted-foreground">
-                        {exp.company} - {exp.location}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {exp.startDate} - {exp.current ? "Present" : exp.endDate}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="icon">
-                      <Edit className="h-4 w-4" />
+        {/* Portfolio URL Card */}
+        <Card className="mb-8 border-primary/20 bg-primary/5">
+          <CardContent className="py-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground mb-1">Your Portfolio URL</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm md:text-base font-mono bg-background px-3 py-1.5 rounded-md border flex-1 truncate">
+                    {portfolioUrl || `/p/${portfolio.slug}`}
+                  </code>
+                  <Button size="icon" variant="ghost" onClick={handleCopyUrl}>
+                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                  {portfolio.isPublic && (
+                    <Button size="icon" variant="ghost" asChild>
+                      <a href={`/p/${portfolio.slug}`} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     </Button>
-                  </div>
-                  <p className="mt-3 text-sm">{exp.description}</p>
-                  {exp.technologies && exp.technologies.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {exp.technologies.map((tech: string) => (
-                        <Badge key={tech} variant="outline" className="text-xs">
-                          {tech}
-                        </Badge>
-                      ))}
-                    </div>
                   )}
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="skills" className="mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Skills</h2>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Skill
-            </Button>
-          </div>
-          {skills.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Code className="h-12 w-12 text-muted-foreground/50" />
-                <p className="mt-4 text-muted-foreground">
-                  No skills added yet
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {skills.map((skill: { id: string; name: string; level: string; category: string }) => (
-                <Card key={skill.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div>
-                      <p className="font-medium">{skill.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {skill.category}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        skill.level === "expert"
-                          ? "default"
-                          : skill.level === "proficient"
-                          ? "secondary"
-                          : "outline"
-                      }
-                    >
-                      {skill.level}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          <Separator className="my-6" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Languages</h2>
-            <Button size="sm" variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Language
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {languages.map((lang: { id: string; name: string; proficiency: string }) => (
-              <Badge key={lang.id} variant="secondary" className="px-3 py-1">
-                {lang.name} ({lang.proficiency})
-              </Badge>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="projects" className="mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Projects</h2>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Project
-            </Button>
-          </div>
-          {projects.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <FolderKanban className="h-12 w-12 text-muted-foreground/50" />
-                <p className="mt-4 text-muted-foreground">
-                  No projects added yet
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {projects.map((project: { id: string; name: string; description: string; url?: string; technologies?: string[]; highlights?: string[] }) => (
-                <Card key={project.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{project.name}</CardTitle>
-                      {project.url && (
-                        <a href={project.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                        </a>
-                      )}
-                    </div>
-                    <CardDescription>{project.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {project.technologies && project.technologies.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {project.technologies.map((tech: string) => (
-                          <Badge key={tech} variant="outline" className="text-xs">
-                            {tech}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                    {project.highlights && project.highlights.length > 0 && (
-                      <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-                        {project.highlights.map((h: string, i: number) => (
-                          <li key={i} className="flex items-center gap-2">
-                            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                            {h}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="education" className="mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Education</h2>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Education
-            </Button>
-          </div>
-          {education.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <GraduationCap className="h-12 w-12 text-muted-foreground/50" />
-                <p className="mt-4 text-muted-foreground">
-                  No education added yet
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            education.map((edu: { id: string; degree: string; institution: string; field: string; startDate: string; endDate?: string; gpa?: string; description?: string }) => (
-              <Card key={edu.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <GraduationCap className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{edu.degree}</h3>
-                        <p className="text-muted-foreground">
-                          {edu.institution} - {edu.field}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {edu.startDate} - {edu.endDate || "Present"}
-                          {edu.gpa && ` | GPA: ${edu.gpa}`}
-                        </p>
-                        {edu.description && (
-                          <p className="mt-2 text-sm">{edu.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-
-          <Separator className="my-6" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Certifications</h2>
-            <Button size="sm" variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Certification
-            </Button>
-          </div>
-          {certifications.map((cert: { id: string; name: string; issuer: string; issueDate: string }) => (
-            <Card key={cert.id}>
-              <CardContent className="flex items-center gap-4 p-4">
-                <Award className="h-8 w-8 text-amber-500" />
-                <div>
-                  <p className="font-medium">{cert.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {cert.issuer} - {cert.issueDate}
-                  </p>
                 </div>
+              </div>
+              <Badge variant={portfolio.isPublic ? "default" : "secondary"}>
+                {portfolio.isPublic ? "Live" : "Draft"}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="personal" className="space-y-6">
+          <TabsList className="flex flex-wrap h-auto gap-2 bg-transparent p-0">
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-4 py-2 rounded-lg border"
+              >
+                <tab.icon className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="personal" className="mt-6 space-y-6">
+            <AIResumeImport
+              portfolio={portfolio}
+              onImport={(updates) => handlePortfolioUpdate({ ...portfolio, ...updates })}
+            />
+            <PersonalInfoForm portfolio={portfolio} onUpdate={handlePortfolioUpdate} />
+          </TabsContent>
+
+          <TabsContent value="experience" className="mt-6">
+            <ExperienceSection
+              experiences={portfolio.experience}
+              onUpdate={(experience) => handlePortfolioUpdate({ ...portfolio, experience })}
+            />
+          </TabsContent>
+
+          <TabsContent value="education" className="mt-6">
+            <EducationSection
+              education={portfolio.education}
+              onUpdate={(education) => handlePortfolioUpdate({ ...portfolio, education })}
+            />
+          </TabsContent>
+
+          <TabsContent value="skills" className="mt-6">
+            <SkillsSection
+              skills={portfolio.skills}
+              roles={portfolio.roles}
+              onUpdateSkills={(skills) => handlePortfolioUpdate({ ...portfolio, skills })}
+              onUpdateRoles={(roles) => handlePortfolioUpdate({ ...portfolio, roles })}
+            />
+          </TabsContent>
+
+          <TabsContent value="projects" className="mt-6">
+            <ProjectsSection
+              projects={portfolio.projects}
+              onUpdate={(projects) => handlePortfolioUpdate({ ...portfolio, projects })}
+            />
+          </TabsContent>
+
+          <TabsContent value="certifications" className="mt-6">
+            <CertificationsSection
+              certifications={portfolio.certifications}
+              onUpdate={(certifications) => handlePortfolioUpdate({ ...portfolio, certifications })}
+            />
+          </TabsContent>
+
+          <TabsContent value="resumes" className="mt-6">
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <FileText className="h-12 w-12 text-muted-foreground/50" />
+                <h3 className="mt-4 text-lg font-semibold">Resume Management</h3>
+                <p className="text-muted-foreground text-center mt-2 max-w-md">
+                  Create and manage multiple resumes with different templates. Your resumes use your portfolio data automatically.
+                </p>
+                <Button className="mt-4" asChild>
+                  <Link href="/dashboard/resume">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Go to Resume Manager
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
-          ))}
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </motion.div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ public interface ICompanyRepository
     Task<CompanyDto?> GetByIdAsync(Guid id);
     Task<CompanyDto?> GetBySlugAsync(string slug);
     Task<(IEnumerable<CompanyListDto> Companies, int TotalCount)> GetAllAsync(int page, int pageSize, string? search = null, string? industry = null);
+    Task<IEnumerable<CompanyListDto>> GetByOwnerAsync(Guid ownerId);
     Task<Guid> CreateAsync(CreateCompanyDto dto, Guid ownerId);
     Task<bool> UpdateAsync(Guid id, UpdateCompanyDto dto);
     Task<IEnumerable<CompanyEmployeeDto>> GetEmployeesAsync(Guid companyId);
@@ -22,6 +23,7 @@ public interface ICompanyService
     Task<CompanyDto?> GetByIdAsync(Guid id);
     Task<CompanyDto?> GetBySlugAsync(string slug);
     Task<(IEnumerable<CompanyListDto> Companies, int TotalCount)> GetAllAsync(int page, int pageSize, string? search = null, string? industry = null);
+    Task<IEnumerable<CompanyListDto>> GetMyCompaniesAsync(Guid ownerId);
     Task<Guid> CreateAsync(CreateCompanyDto dto, Guid ownerId);
     Task<bool> UpdateAsync(Guid id, Guid ownerId, UpdateCompanyDto dto);
     Task<IEnumerable<CompanyEmployeeDto>> GetEmployeesAsync(Guid companyId);
@@ -93,6 +95,20 @@ public class CompanyRepository : ICompanyRepository
             """, new { Search = $"%{search}%", Industry = $"%{industry}%", PageSize = pageSize, Offset = (page - 1) * pageSize });
 
         return (companies, totalCount);
+    }
+
+    public async Task<IEnumerable<CompanyListDto>> GetByOwnerAsync(Guid ownerId)
+    {
+        using var connection = await _connectionFactory.CreateReadConnectionAsync();
+        return await connection.QueryAsync<CompanyListDto>("""
+            SELECT c.id, c.name, c.slug, c."LogoUrl", c.industry,
+                   c."CompanySize", c.city, c.country,
+                   c."IsVerified", c.rating, c."CreatedAt",
+                   (SELECT COUNT(*) FROM "CompanyEmployees" ce WHERE ce."CompanyId" = c.id AND ce."IsActive" = true) as EmployeeCount
+            FROM "Companies" c
+            WHERE c."OwnerId" = @OwnerId AND c."IsDeleted" = false
+            ORDER BY c."CreatedAt" DESC
+            """, new { OwnerId = ownerId });
     }
 
     public async Task<Guid> CreateAsync(CreateCompanyDto dto, Guid ownerId)
@@ -225,6 +241,9 @@ public class CompanyService : ICompanyService
 
     public async Task<(IEnumerable<CompanyListDto> Companies, int TotalCount)> GetAllAsync(int page, int pageSize, string? search, string? industry)
         => await _repository.GetAllAsync(page, pageSize, search, industry);
+
+    public async Task<IEnumerable<CompanyListDto>> GetMyCompaniesAsync(Guid ownerId)
+        => await _repository.GetByOwnerAsync(ownerId);
 
     public async Task<Guid> CreateAsync(CreateCompanyDto dto, Guid ownerId)
     {

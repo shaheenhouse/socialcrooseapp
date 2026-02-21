@@ -384,6 +384,13 @@ export const portfolioApi = {
   create: (data: Record<string, unknown>) => api.post('/portfolios', data),
   update: (id: string, data: Record<string, unknown>) => api.patch(`/portfolios/${id}`, data),
   delete: (id: string) => api.delete(`/portfolios/${id}`),
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/portfolios/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Resume API
@@ -412,6 +419,7 @@ export const designApi = {
 export const companyApi = {
   getAll: (params?: { page?: number; pageSize?: number; search?: string; industry?: string }) =>
     api.get('/companies', { params }),
+  getMy: () => api.get('/companies/my'),
   getById: (id: string) => api.get(`/companies/${id}`),
   getBySlug: (slug: string) => api.get(`/companies/slug/${slug}`),
   create: (data: Record<string, unknown>) => api.post('/companies', data),

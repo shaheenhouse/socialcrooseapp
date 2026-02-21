@@ -2,307 +2,374 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Palette,
-  Plus,
-  MoreVertical,
-  Copy,
-  Trash2,
-  Edit,
-  Image,
-  FileText,
-  LayoutGrid,
-  Presentation,
-  Square,
-} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Plus,
+  Search,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Copy,
+  Loader2,
+  Palette,
+  Clock,
+  FileImage,
+} from "lucide-react";
+import { toast } from "sonner";
+import { DESIGN_SIZES } from "@/types/design";
 import { designApi } from "@/lib/api";
 
 interface DesignItem {
   id: string;
   name: string;
-  description?: string;
   width: number;
   height: number;
   thumbnail: string;
-  status: string;
-  category: string;
-  isTemplate: boolean;
-  isPublic: boolean;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
 }
-
-const DESIGN_SIZES = [
-  { name: "Instagram Post", width: 1080, height: 1080, icon: Image },
-  { name: "Instagram Story", width: 1080, height: 1920, icon: Image },
-  { name: "Facebook Post", width: 940, height: 788, icon: Image },
-  { name: "Twitter Post", width: 1200, height: 675, icon: Image },
-  { name: "YouTube Thumbnail", width: 1280, height: 720, icon: Image },
-  { name: "LinkedIn Banner", width: 1584, height: 396, icon: LayoutGrid },
-  { name: "Presentation", width: 1920, height: 1080, icon: Presentation },
-  { name: "A4 Document", width: 2480, height: 3508, icon: FileText },
-  { name: "Resume", width: 2480, height: 3508, icon: FileText },
-  { name: "Business Card", width: 1050, height: 600, icon: Square },
-  { name: "Custom", width: 800, height: 600, icon: Square },
-];
 
 export default function DesignsPage() {
   const router = useRouter();
   const [designs, setDesigns] = useState<DesignItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showSizeDialog, setShowSizeDialog] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [newName, setNewName] = useState("Untitled Design");
+  const [selectedSize, setSelectedSize] = useState(DESIGN_SIZES[0]);
+  const [customWidth, setCustomWidth] = useState(800);
+  const [customHeight, setCustomHeight] = useState(600);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    loadDesigns();
+    fetchDesigns();
   }, []);
 
-  const loadDesigns = async () => {
+  const fetchDesigns = async () => {
     try {
       const { data } = await designApi.getMe();
       setDesigns(data.data || []);
     } catch {
-      setDesigns([]);
+      toast.error("Failed to load designs");
     } finally {
       setLoading(false);
     }
   };
 
-  const createDesign = async (
-    name: string,
-    width: number,
-    height: number,
-    category: string = "custom"
-  ) => {
+  const handleCreate = async () => {
+    setCreating(true);
     try {
+      const w = selectedSize.name === "Custom" ? customWidth : selectedSize.width;
+      const h = selectedSize.name === "Custom" ? customHeight : selectedSize.height;
+
       const { data } = await designApi.create({
-        name,
-        width,
-        height,
-        category,
+        name: newName,
+        width: w,
+        height: h,
       });
       router.push(`/dashboard/designs/${data.id}`);
-    } catch (err) {
-      console.error("Failed to create design:", err);
+    } catch {
+      toast.error("Failed to create design");
+    } finally {
+      setCreating(false);
     }
   };
 
-  const duplicateDesign = async (id: string) => {
+  const handleDuplicate = async (id: string) => {
     try {
       await designApi.duplicate(id);
-      await loadDesigns();
-    } catch (err) {
-      console.error("Failed to duplicate design:", err);
+      toast.success("Design duplicated!");
+      fetchDesigns();
+    } catch {
+      toast.error("Failed to duplicate");
     }
   };
 
-  const deleteDesign = async (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this design?")) return;
     try {
       await designApi.delete(id);
-      setDesigns(designs.filter((d) => d.id !== id));
-    } catch (err) {
-      console.error("Failed to delete design:", err);
+      toast.success("Design deleted");
+      fetchDesigns();
+    } catch {
+      toast.error("Failed to delete");
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
+  const filtered = designs.filter((d) =>
+    d.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
         <div>
-          <h1 className="text-3xl font-bold">Design Studio</h1>
-          <p className="text-muted-foreground">
-            Create stunning designs for social media, presentations, and more
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Palette className="w-8 h-8 text-primary" />
+            Design Studio
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Create, edit, and export beautiful designs
           </p>
         </div>
-      </div>
 
-      <Tabs defaultValue="designs">
-        <TabsList>
-          <TabsTrigger value="designs">My Designs</TabsTrigger>
-          <TabsTrigger value="create">Create New</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-        </TabsList>
+        <Button
+          onClick={() => setShowNewDialog(true)}
+          size="lg"
+          className="gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Create Design
+        </Button>
+      </motion.div>
 
-        <TabsContent value="designs" className="mt-6">
-          {designs.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-20">
-                <Palette className="h-16 w-16 text-muted-foreground/50" />
-                <h2 className="mt-4 text-xl font-semibold">No Designs Yet</h2>
-                <p className="mt-2 text-center text-muted-foreground max-w-md">
-                  Create your first design using our powerful editor with shapes,
-                  text, images, flowcharts, and AI-powered tools.
-                </p>
-                <Button
-                  className="mt-6"
-                  onClick={() =>
-                    createDesign("My First Design", 1080, 1080, "social-media")
-                  }
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Your First Design
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {designs.map((design) => (
-                <Card
-                  key={design.id}
-                  className="group relative cursor-pointer overflow-hidden transition-all hover:shadow-lg"
-                  onClick={() => router.push(`/dashboard/designs/${design.id}`)}
-                >
-                  <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/dashboard/designs/${design.id}`);
-                          }}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            duplicateDesign(design.id);
-                          }}
-                        >
-                          <Copy className="mr-2 h-4 w-4" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteDesign(design.id);
-                          }}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+      {/* Search */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="relative"
+      >
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search designs..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 max-w-sm"
+        />
+      </motion.div>
 
-                  <div className="flex h-44 items-center justify-center bg-muted/50">
+      {/* Designs Grid */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center justify-center py-20 text-center"
+        >
+          <FileImage className="w-16 h-16 text-muted-foreground/30 mb-4" />
+          <h3 className="text-lg font-semibold mb-2">
+            {designs.length === 0 ? "No designs yet" : "No matching designs"}
+          </h3>
+          <p className="text-muted-foreground mb-6">
+            {designs.length === 0
+              ? "Create your first design to get started!"
+              : "Try a different search term"}
+          </p>
+          {designs.length === 0 && (
+            <Button onClick={() => setShowNewDialog(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Create Design
+            </Button>
+          )}
+        </motion.div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((design, index) => (
+              <motion.div
+                key={design.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ delay: index * 0.05 }}
+                layout
+              >
+                <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-primary/30 cursor-pointer">
+                  {/* Thumbnail */}
+                  <div
+                    className="aspect-square bg-muted relative overflow-hidden"
+                    onClick={() => router.push(`/dashboard/designs/${design.id}`)}
+                  >
                     {design.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={design.thumbnail}
                         alt={design.name}
-                        className="h-full w-full object-contain"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <Palette className="h-12 w-12 text-muted-foreground/30" />
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                        <Palette className="w-12 h-12 text-primary/30" />
+                      </div>
                     )}
+
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <motion.div
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        whileHover={{ scale: 1.05 }}
+                      >
+                        <Badge className="bg-primary text-white gap-1 px-4 py-2">
+                          <Pencil className="w-3 h-3" />
+                          Edit Design
+                        </Badge>
+                      </motion.div>
+                    </div>
                   </div>
 
-                  <CardContent className="p-3">
-                    <h3 className="font-medium truncate text-sm">
-                      {design.name}
-                    </h3>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {design.width} x {design.height}
-                      </span>
-                      <Badge variant="outline" className="text-xs">
-                        {design.status}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {design.updatedAt
-                        ? new Date(design.updatedAt).toLocaleDateString()
-                        : new Date(design.createdAt).toLocaleDateString()}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium truncate">{design.name}</h3>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <Clock className="w-3 h-3" />
+                          {formatDate(design.updatedAt || design.createdAt)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {design.width} x {design.height}px
+                        </p>
+                      </div>
 
-        <TabsContent value="create" className="mt-6">
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Choose a Size</h2>
-            <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
-              {DESIGN_SIZES.map((size) => (
-                <Card
-                  key={size.name}
-                  className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
-                  onClick={() =>
-                    createDesign(
-                      size.name,
-                      size.width,
-                      size.height,
-                      size.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
-                    )
-                  }
-                >
-                  <CardContent className="flex items-center gap-4 p-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <size.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{size.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {size.width} x {size.height}px
-                      </p>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/designs/${design.id}`)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(design.id)}>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(design.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* New Design Dialog */}
+      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Design</DialogTitle>
+            <DialogDescription>
+              Choose a name and size for your new design.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="designName">Design Name</Label>
+              <Input
+                id="designName"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="My awesome design"
+              />
             </div>
+
+            <div className="space-y-2">
+              <Label>Canvas Size</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {DESIGN_SIZES.map((size) => (
+                  <Button
+                    key={size.name}
+                    variant={selectedSize.name === size.name ? "default" : "outline"}
+                    className="h-auto py-3 flex flex-col items-start"
+                    onClick={() => setSelectedSize(size)}
+                  >
+                    <span className="font-medium text-sm">{size.name}</span>
+                    <span className="text-xs opacity-70">
+                      {size.width} x {size.height}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {selectedSize.name === "Custom" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Width (px)</Label>
+                  <Input
+                    type="number"
+                    value={customWidth}
+                    onChange={(e) => setCustomWidth(parseInt(e.target.value) || 100)}
+                    min={100}
+                    max={5000}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Height (px)</Label>
+                  <Input
+                    type="number"
+                    value={customHeight}
+                    onChange={(e) => setCustomHeight(parseInt(e.target.value) || 100)}
+                    min={100}
+                    max={5000}
+                  />
+                </div>
+              </div>
+            )}
           </div>
-        </TabsContent>
 
-        <TabsContent value="templates" className="mt-6">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-20">
-              <LayoutGrid className="h-16 w-16 text-muted-foreground/50" />
-              <h2 className="mt-4 text-xl font-semibold">Templates Coming Soon</h2>
-              <p className="mt-2 text-center text-muted-foreground max-w-md">
-                Professional design templates will be available here. For now,
-                start from scratch and let your creativity flow!
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={creating}>
+              {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Create Design
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

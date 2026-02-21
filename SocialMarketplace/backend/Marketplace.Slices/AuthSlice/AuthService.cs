@@ -64,7 +64,8 @@ public class AuthService : IAuthService
             return new AuthResult(false, Error: "Account is not active");
         }
 
-        var roles = new List<string> { "User" }; // TODO: Get actual roles from database
+        var dbRoles = await _userRepository.GetUserRolesAsync(user.Id);
+        var roles = dbRoles.Any() ? dbRoles.ToList() : new List<string> { "User" };
         var accessToken = GenerateAccessToken(user.Id, user.Email, roles);
         var refreshToken = GenerateRefreshToken();
         var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue("Jwt:ExpiryMinutes", 60));
@@ -105,6 +106,7 @@ public class AuthService : IAuthService
         var createDto = new UserSlice.DTO.CreateUserDto(dto.Email, dto.Username, dto.Password, dto.FirstName, dto.LastName, dto.PhoneNumber);
         var userId = await _userRepository.CreateAsync(createDto, passwordHash);
 
+        await _userRepository.AssignDefaultRoleAsync(userId);
         var roles = new List<string> { "User" };
         var accessToken = GenerateAccessToken(userId, dto.Email, roles);
         var refreshToken = GenerateRefreshToken();
@@ -142,7 +144,8 @@ public class AuthService : IAuthService
         // Remove old refresh token
         await _cache.RemoveAsync($"refresh:{refreshToken}");
 
-        var roles = new List<string> { "User" };
+        var dbRoles = await _userRepository.GetUserRolesAsync(userId);
+        var roles = dbRoles.Any() ? dbRoles.ToList() : new List<string> { "User" };
         var newAccessToken = GenerateAccessToken(userId, user.Email, roles);
         var newRefreshToken = GenerateRefreshToken();
         var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue("Jwt:ExpiryMinutes", 60));
@@ -182,6 +185,7 @@ public class AuthService : IAuthService
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(JwtRegisteredClaimNames.Email, email),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
