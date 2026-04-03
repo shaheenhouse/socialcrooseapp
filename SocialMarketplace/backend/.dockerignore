@@ -19,8 +19,9 @@
 **/appsettings.Local.json
 
 # Test projects (not needed in production image)
-**/*Tests*/
-**/*Test*/
+# NOTE: patterns must match project folder names only, not entity class files
+**/*.Tests/
+**/*.Tests.csproj
 
 # Git
 .git/
