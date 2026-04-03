@@ -29,17 +29,15 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create logs directory with correct permissions before switching user
-RUN mkdir -p /app/logs
-
-# Create non-root user
-RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 --ingroup appgroup --home /app appuser && \
+# Create non-root user (Ubuntu-based image uses groupadd/useradd)
+RUN groupadd --system --gid 1001 appgroup && \
+    useradd --system --uid 1001 --gid appgroup --home /app appuser && \
+    mkdir -p /app/logs && \
     chown -R appuser:appgroup /app
 
-USER appuser
-
 COPY --from=build --chown=appuser:appgroup /app/publish .
+
+USER appuser
 
 # Railway injects PORT; fall back to 8080 for local Docker runs
 ENV ASPNETCORE_URLS=http://+:${PORT:-8080}
