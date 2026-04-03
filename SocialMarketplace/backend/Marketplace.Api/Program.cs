@@ -142,15 +142,12 @@ if (redisEnabled && !string.IsNullOrWhiteSpace(redisConn))
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.UseSwaggerUI(c =>
 {
-    app.MapOpenApi();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/openapi/v1.json", "Social Marketplace API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
+    c.SwaggerEndpoint("/openapi/v1.json", "Social Marketplace API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseSerilogRequestLogging();
 app.UseCors("AllowFrontend");
