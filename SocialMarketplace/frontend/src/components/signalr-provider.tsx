@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { useNotificationStore } from "@/store/notification-store";
 import {
@@ -8,16 +8,18 @@ import {
   getNotificationConnection,
   getPresenceConnection,
   startConnection,
-  stopAllConnections,
+  stopAllConnectionsAsync,
 } from "@/lib/signalr";
 
 export function SignalRProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
-  const { fetchUnreadCount } = useNotificationStore();
+  const fetchUnreadCount = useNotificationStore((s) => s.fetchUnreadCount);
+  const fetchUnreadRef = useRef(fetchUnreadCount);
+  fetchUnreadRef.current = fetchUnreadCount;
 
   useEffect(() => {
     if (!isAuthenticated) {
-      stopAllConnections();
+      void stopAllConnectionsAsync();
       return;
     }
 
@@ -25,25 +27,30 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
     const notifConn = getNotificationConnection();
     const presenceConn = getPresenceConnection();
 
-    startConnection(chatConn);
-    startConnection(notifConn);
-    startConnection(presenceConn);
-
     notifConn.on("NewNotification", () => {
-      fetchUnreadCount();
+      void fetchUnreadRef.current();
     });
-
-    notifConn.on("UnreadCount", (count: number) => {
-      // handled by store
-    });
-
+    notifConn.on("UnreadCount", () => {});
     presenceConn.on("UserConnected", () => {});
     presenceConn.on("UserDisconnected", () => {});
 
+    let cancelled = false;
+    const isCancelled = () => cancelled;
+
+    void (async () => {
+      const opts = { isCancelled };
+      await startConnection(chatConn, opts);
+      if (isCancelled()) return;
+      await startConnection(notifConn, opts);
+      if (isCancelled()) return;
+      await startConnection(presenceConn, opts);
+    })();
+
     return () => {
-      stopAllConnections();
+      cancelled = true;
+      void stopAllConnectionsAsync();
     };
-  }, [isAuthenticated, fetchUnreadCount]);
+  }, [isAuthenticated]);
 
   return <>{children}</>;
 }

@@ -126,6 +126,7 @@ public class MarketplaceDbContext : DbContext
     public DbSet<Connection> Connections => Set<Connection>();
     public DbSet<Follow> Follows => Set<Follow>();
     public DbSet<SearchHistory> SearchHistories => Set<SearchHistory>();
+    public DbSet<TrendingSearch> TrendingSearches => Set<TrendingSearch>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Page> Pages => Set<Page>();

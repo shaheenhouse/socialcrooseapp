@@ -41,13 +41,20 @@ public class PresenceHub : Hub
                 return existing;
             });
 
-            // Notify all clients about the new online user
-            await Clients.All.SendAsync("UserConnected", new
+            // Broadcast can fail if Redis backplane is misconfigured — do not tear down the connection
+            try
             {
-                UserId = userId,
-                Status = "online",
-                ConnectedAt = presence.ConnectedAt
-            });
+                await Clients.All.SendAsync("UserConnected", new
+                {
+                    UserId = userId,
+                    Status = "online",
+                    ConnectedAt = presence.ConnectedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Presence UserConnected broadcast failed for {UserId}", userId);
+            }
 
             _logger.LogInformation("User {UserId} is now online", userId);
         }
@@ -62,12 +69,18 @@ public class PresenceHub : Hub
         {
             _onlineUsers.TryRemove(userId, out _);
 
-            // Notify all clients about the offline user
-            await Clients.All.SendAsync("UserDisconnected", new
+            try
             {
-                UserId = userId,
-                DisconnectedAt = DateTime.UtcNow
-            });
+                await Clients.All.SendAsync("UserDisconnected", new
+                {
+                    UserId = userId,
+                    DisconnectedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Presence UserDisconnected broadcast failed for {UserId}", userId);
+            }
 
             _logger.LogInformation("User {UserId} is now offline", userId);
         }

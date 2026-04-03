@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,40 +16,45 @@ public static class ServiceCollectionExtensions
         // Connection Factory
         services.AddSingleton<IConnectionFactory, ConnectionFactory>();
 
-        // Redis (optional - gracefully degrades without it)
-        var redisConnection = configuration.GetConnectionString("Redis") ?? "localhost:6379";
-        services.AddSingleton<IConnectionMultiplexer>(sp =>
+        // Redis (optional — set Redis:Enabled to false in appsettings.Development when Redis is not installed)
+        var redisEnabled = configuration.GetValue("Redis:Enabled", true);
+        var redisConnection = configuration.GetConnectionString("Redis");
+        if (redisEnabled && string.IsNullOrWhiteSpace(redisConnection))
+            redisConnection = "localhost:6379";
+
+        services.AddMemoryCache();
+
+        if (redisEnabled)
         {
-            var logger = sp.GetRequiredService<ILogger<RedisJobQueue>>();
-            try
+            services.AddSingleton<IConnectionMultiplexer>(_ =>
             {
-                var options = ConfigurationOptions.Parse(redisConnection);
+                var options = ConfigurationOptions.Parse(redisConnection!);
                 options.AbortOnConnectFail = false;
                 options.ConnectTimeout = 3000;
                 options.SyncTimeout = 2000;
                 return ConnectionMultiplexer.Connect(options);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Redis not available — running without distributed cache/queues");
-                var options = ConfigurationOptions.Parse(redisConnection);
-                options.AbortOnConnectFail = false;
-                return ConnectionMultiplexer.Connect(options);
-            }
-        });
-
-        // Caching
-        services.AddMemoryCache();
-        services.AddSingleton<IAdaptiveCache, AdaptiveCache>();
+            });
+            services.AddSingleton<IAdaptiveCache, AdaptiveCache>();
+            services.AddSingleton<IJobQueue, RedisJobQueue>();
+            services.AddSingleton<IDistributedLock, DistributedLock>();
+        }
+        else
+        {
+            services.AddSingleton<IAdaptiveCache>(sp => new AdaptiveCache(
+                sp.GetRequiredService<IMemoryCache>(),
+                redis: null,
+                sp.GetRequiredService<IConfiguration>(),
+                sp.GetRequiredService<ILogger<AdaptiveCache>>()));
+            services.AddSingleton<IJobQueue, NullJobQueue>();
+            services.AddSingleton<IDistributedLock, NoOpDistributedLock>();
+        }
 
         // Infrastructure
         services.AddSingleton<IQuantumRouter, QuantumRouter>();
-        services.AddSingleton<IJobQueue, RedisJobQueue>();
         services.AddScoped<IEntanglementManager, EntanglementManager>();
 
         // Performance
         services.AddSingleton<IComputePool, ComputePool>();
-        services.AddSingleton<IDistributedLock, DistributedLock>();
 
         return services;
     }

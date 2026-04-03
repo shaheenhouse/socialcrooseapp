@@ -37,7 +37,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { useQuery } from "@tanstack/react-query";
 import { orderApi, walletApi, projectApi, storeApi, connectionApi } from "@/lib/api";
 import Link from "next/link";
-import { formatCurrency, formatRelativeTime } from "@/lib/utils";
+import { formatCurrency, formatRelativeTime, listFromApiResponse } from "@/lib/utils";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -111,10 +111,10 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const orders = ordersData?.data?.items ?? ordersData?.data ?? [];
-  const sales = salesData?.data?.items ?? salesData?.data ?? [];
+  const orders = listFromApiResponse(ordersData);
+  const sales = listFromApiResponse(salesData);
   const wallet = walletData?.data;
-  const projects = projectsData?.data?.items ?? projectsData?.data ?? [];
+  const projects = listFromApiResponse(projectsData);
   const connStats = connectionsData?.data;
 
   const recentOrders = isSeller && sales.length > 0 ? sales : orders;

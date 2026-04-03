@@ -6,7 +6,10 @@ namespace Marketplace.Realtime;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddRealtimeServices(this IServiceCollection services, string? redisConnection = null)
+    public static IServiceCollection AddRealtimeServices(
+        this IServiceCollection services,
+        string? redisConnection = null,
+        bool useRedisBackplane = true)
     {
         var signalR = services.AddSignalR(options =>
         {
@@ -15,7 +18,7 @@ public static class ServiceCollectionExtensions
             options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
         });
 
-        if (!string.IsNullOrWhiteSpace(redisConnection))
+        if (useRedisBackplane && !string.IsNullOrWhiteSpace(redisConnection))
         {
             try
             {

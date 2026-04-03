@@ -131,16 +131,19 @@ public class SearchRepository : ISearchRepository
         var searchPattern = $"%{query}%";
 
         return await connection.QueryAsync<CompanySearchResult>(
-            @"SELECT p.id, p.name, p.slug, p.description, p.logo_url as LogoUrl, p.industry,
-                     p.headquarters, p.employee_count as EmployeeCount, p.follower_count as FollowerCount, p.is_verified as IsVerified
-              FROM pages p
-              WHERE p.is_active = true AND p.type IN (0, 1, 3)
-              AND (p.name ILIKE @Pattern OR p.description ILIKE @Pattern OR p.industry ILIKE @Pattern)
-              AND (@Industry IS NULL OR p.industry ILIKE @IndustryPattern)
-              AND (@Location IS NULL OR p.headquarters ILIKE @LocationPattern)
-              ORDER BY 
-                  CASE WHEN p.name ILIKE @Pattern THEN 0 ELSE 1 END,
-                  p.follower_count DESC
+            @"SELECT c.""Id"", c.""Name"", c.""Slug"", c.""Description"", c.""LogoUrl"", c.""Industry"",
+                     TRIM(BOTH ', ' FROM CONCAT_WS(', ', NULLIF(c.""City"", ''), NULLIF(c.""Country"", ''))) AS Headquarters,
+                     c.""TotalEmployees"" AS EmployeeCount,
+                     0 AS FollowerCount,
+                     c.""IsVerified"" AS IsVerified
+              FROM ""Companies"" c
+              WHERE c.""IsDeleted"" = false
+              AND (c.""Name"" ILIKE @Pattern OR c.""Description"" ILIKE @Pattern OR c.""Industry"" ILIKE @Pattern)
+              AND (@Industry IS NULL OR c.""Industry"" ILIKE @IndustryPattern)
+              AND (@Location IS NULL OR c.""City"" ILIKE @LocationPattern OR c.""Country"" ILIKE @LocationPattern OR c.""Address"" ILIKE @LocationPattern)
+              ORDER BY
+                  CASE WHEN c.""Name"" ILIKE @Pattern THEN 0 ELSE 1 END,
+                  c.""Rating"" DESC, c.""TotalReviews"" DESC
               LIMIT @PageSize OFFSET @Offset",
             new
             {
@@ -196,9 +199,13 @@ public class SearchRepository : ISearchRepository
     {
         using var connection = _connectionFactory.CreateReadConnection();
         return await connection.QueryAsync<SearchHistory>(
-            @"SELECT DISTINCT ON (query) * FROM search_history
-              WHERE user_id = @UserId
-              ORDER BY query, created_at DESC
+            @"SELECT DISTINCT ON (sh.query)
+                     sh.id AS ""Id"", sh.user_id AS ""UserId"", sh.query AS ""Query"", sh.type AS ""Type"",
+                     sh.filters AS ""Filters"", sh.result_count AS ""ResultCount"", sh.clicked_result_id AS ""ClickedResultId"",
+                     sh.created_at AS ""CreatedAt""
+              FROM search_history sh
+              WHERE sh.user_id = @UserId
+              ORDER BY sh.query, sh.created_at DESC
               LIMIT @Limit",
             new { UserId = userId, Limit = limit });
     }
@@ -225,12 +232,14 @@ public class SearchRepository : ISearchRepository
         using var connection = _connectionFactory.CreateReadConnection();
         var now = DateTime.UtcNow;
         return await connection.QueryAsync<TrendingSearch>(
-            @"SELECT * FROM trending_searches
-              WHERE (@Type IS NULL OR type = @Type)
-              AND period_end >= @Now
-              ORDER BY rank
+            @"SELECT ts.id AS ""Id"", ts.query AS ""Query"", ts.type AS ""Type"", ts.search_count AS ""SearchCount"",
+                     ts.period_start AS ""PeriodStart"", ts.period_end AS ""PeriodEnd"", ts.rank AS ""Rank""
+              FROM trending_searches ts
+              WHERE (@Type IS NULL OR ts.type = @Type::integer)
+              AND ts.period_end >= @Now
+              ORDER BY ts.rank
               LIMIT @Limit",
-            new { Type = type, Now = now, Limit = limit });
+            new { Type = type.HasValue ? (int?)type.Value : null, Now = now, Limit = limit });
     }
 }
 
@@ -268,7 +277,7 @@ public record ProjectSearchResult
     public decimal BudgetMin { get; init; }
     public decimal BudgetMax { get; init; }
     public string Currency { get; init; } = "USD";
-    public string Status { get; init; } = string.Empty;
+    public int Status { get; init; }
     public int BidCount { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? Deadline { get; init; }

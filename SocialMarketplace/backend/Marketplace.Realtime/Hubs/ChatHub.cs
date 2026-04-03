@@ -36,10 +36,16 @@ public class ChatHub : Hub
 
             // Add to user group
             await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{userId}");
-            
-            // Notify user's contacts they're online
-            await Clients.Others.SendAsync("UserOnline", userId);
-            
+
+            try
+            {
+                await Clients.Others.SendAsync("UserOnline", userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Chat UserOnline broadcast failed for {UserId}", userId);
+            }
+
             _logger.LogInformation("User {UserId} connected to chat hub", userId);
         }
         await base.OnConnectedAsync();
@@ -66,8 +72,14 @@ public class ChatHub : Hub
 
             if (isLastConnection)
             {
-                // Notify user's contacts they're offline
-                await Clients.Others.SendAsync("UserOffline", userId);
+                try
+                {
+                    await Clients.Others.SendAsync("UserOffline", userId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Chat UserOffline broadcast failed for {UserId}", userId);
+                }
             }
 
             _logger.LogInformation("User {UserId} disconnected from chat hub", userId);

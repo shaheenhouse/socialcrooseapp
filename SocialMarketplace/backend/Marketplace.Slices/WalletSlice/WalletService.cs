@@ -32,11 +32,11 @@ public class WalletRepository : IWalletRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QuerySingleOrDefaultAsync<WalletDto>("""
-            SELECT id, "UserId", balance, "PendingBalance",
-                   "HeldBalance", currency, "IsActive",
-                   "TotalEarned", "TotalWithdrawn",
-                   "TotalSpent", "CreatedAt"
-            FROM wallets WHERE "UserId" = @UserId AND "IsDeleted" = false
+            SELECT w."Id", w."UserId", w."Balance", w."PendingBalance",
+                   w."HeldBalance", w."Currency", w."IsActive",
+                   w."TotalEarned", w."TotalWithdrawn",
+                   w."TotalSpent", w."CreatedAt"
+            FROM wallets w WHERE w."UserId" = @UserId AND w."IsDeleted" = false
             """, new { UserId = userId });
     }
 
@@ -45,9 +45,9 @@ public class WalletRepository : IWalletRepository
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         var id = Guid.NewGuid();
         await connection.ExecuteAsync("""
-            INSERT INTO wallets (id, "UserId", balance, "PendingBalance", "HeldBalance", currency,
-                                "IsActive", "IsLocked", "TotalEarned", "TotalWithdrawn", "TotalSpent",
-                                "CreatedAt", "IsDeleted")
+            INSERT INTO wallets ("Id", "UserId", "Balance", "PendingBalance", "HeldBalance", "Currency",
+                "IsActive", "IsLocked", "TotalEarned", "TotalWithdrawn", "TotalSpent",
+                "CreatedAt", "IsDeleted")
             VALUES (@Id, @UserId, 0, 0, 0, @Currency,
                    true, false, 0, 0, 0,
                    NOW(), false)
@@ -59,17 +59,17 @@ public class WalletRepository : IWalletRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
 
-        var whereClause = @"WHERE t.wallet_id = @WalletId AND t.""IsDeleted"" = false";
+        var whereClause = @"WHERE t.""WalletId"" = @WalletId AND t.""IsDeleted"" = false";
         if (!string.IsNullOrEmpty(type))
-            whereClause += " AND t.type = @Type::integer";
+            whereClause += " AND t.\"Type\" = @Type::integer";
 
         var totalCount = await connection.ExecuteScalarAsync<int>(
             $"SELECT COUNT(*) FROM transactions t {whereClause}", new { WalletId = walletId, Type = type });
 
         var transactions = await connection.QueryAsync<TransactionDto>($"""
-            SELECT t.id, t."TransactionNumber", t.type, t.amount,
+            SELECT t."Id", t."TransactionNumber", t."Type", t."Amount",
                    t."BalanceBefore", t."BalanceAfter",
-                   t.currency, t.description, t.reference, t.status, t."CreatedAt"
+                   t."Currency", t."Description", t."Reference", t."Status", t."CreatedAt"
             FROM transactions t
             {whereClause}
             ORDER BY t."CreatedAt" DESC
@@ -83,15 +83,15 @@ public class WalletRepository : IWalletRepository
     {
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         return await connection.QueryAsync<EscrowDto>("""
-            SELECT e.id, e."EscrowNumber", e.amount, e."ReleasedAmount",
+            SELECT e."Id", e."EscrowNumber", e."Amount", e."ReleasedAmount",
                    e."RefundedAmount", e."HeldAmount",
-                   e.currency, e.status, e."CreatedAt",
-                   CASE WHEN e."BuyerId" = @UserId THEN 'Buyer' ELSE 'Seller' END as UserRole,
-                   b."FirstName" || ' ' || b."LastName" as BuyerName,
-                   s."FirstName" || ' ' || s."LastName" as SellerName
+                   e."Currency", e."Status", e."CreatedAt",
+                   CASE WHEN e."BuyerId" = @UserId THEN 'Buyer' ELSE 'Seller' END AS UserRole,
+                   b."FirstName" || ' ' || b."LastName" AS BuyerName,
+                   s."FirstName" || ' ' || s."LastName" AS SellerName
             FROM escrows e
-            JOIN users b ON e."BuyerId" = b.id
-            JOIN users s ON e."SellerId" = s.id
+            INNER JOIN users b ON e."BuyerId" = b."Id"
+            INNER JOIN users s ON e."SellerId" = s."Id"
             WHERE (e."BuyerId" = @UserId OR e."SellerId" = @UserId) AND e."IsDeleted" = false
             ORDER BY e."CreatedAt" DESC
             LIMIT @PageSize OFFSET @Offset

@@ -63,7 +63,7 @@ export default function MessagesPage() {
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [isTyping, setIsTyping] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: conversationsData, isLoading: loadingConversations } = useQuery({
     queryKey: ["conversations"],

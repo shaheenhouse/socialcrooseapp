@@ -1,28 +1,32 @@
+using Marketplace.Database.Enums;
+
 namespace Marketplace.Slices.UserSlice.DTO;
 
-public record UserDto(
-    Guid Id,
-    string Email,
-    string Username,
-    string FirstName,
-    string LastName,
-    string? PhoneNumber,
-    string? AvatarUrl,
-    string? Bio,
-    string Status,
-    bool EmailVerified,
-    bool PhoneVerified,
-    string PreferredLanguage,
-    string? TimeZone,
-    string? Currency,
-    string? Country,
-    string? City,
-    decimal ReputationScore,
-    decimal AverageRating,
-    int TotalReviews,
-    bool IsVerifiedSeller,
-    bool IsVerifiedBuyer,
-    DateTime CreatedAt);
+public record UserDto
+{
+    public Guid Id { get; init; }
+    public string Email { get; init; } = null!;
+    public string Username { get; init; } = null!;
+    public string FirstName { get; init; } = null!;
+    public string LastName { get; init; } = null!;
+    public string? PhoneNumber { get; init; }
+    public string? AvatarUrl { get; init; }
+    public string? Bio { get; init; }
+    public UserStatus Status { get; init; }
+    public bool EmailVerified { get; init; }
+    public bool PhoneVerified { get; init; }
+    public string PreferredLanguage { get; init; } = null!;
+    public string? TimeZone { get; init; }
+    public string? Currency { get; init; }
+    public string? Country { get; init; }
+    public string? City { get; init; }
+    public decimal ReputationScore { get; init; }
+    public decimal AverageRating { get; init; }
+    public int TotalReviews { get; init; }
+    public bool IsVerifiedSeller { get; init; }
+    public bool IsVerifiedBuyer { get; init; }
+    public DateTime CreatedAt { get; init; }
+}
 
 public record UserProfileDto(
     Guid Id,
@@ -47,7 +51,7 @@ public record UserListDto(
     string FirstName,
     string LastName,
     string? AvatarUrl,
-    string Status,
+    UserStatus Status,
     decimal AverageRating,
     int TotalReviews,
     bool IsVerifiedSeller);

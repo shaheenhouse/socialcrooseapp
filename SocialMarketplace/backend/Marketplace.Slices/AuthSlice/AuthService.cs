@@ -1,10 +1,11 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Marketplace.Core.Caching;
+using Marketplace.Database.Enums;
 using Marketplace.Slices.UserSlice.Repository;
 
 namespace Marketplace.Slices.AuthSlice;
@@ -51,6 +52,7 @@ public class AuthService : IAuthService
         {
             return new AuthResult(false, Error: "Invalid email or password");
         }
+        string passwordHashText = BCrypt.Net.BCrypt.HashPassword("Welcome123!");
 
         var passwordHash = await _userRepository.GetPasswordHashAsync(user.Id);
         if (string.IsNullOrEmpty(passwordHash) || !BCrypt.Net.BCrypt.Verify(dto.Password, passwordHash))
@@ -59,7 +61,7 @@ public class AuthService : IAuthService
             return new AuthResult(false, Error: "Invalid email or password");
         }
 
-        if (user.Status != "Active")
+        if (user.Status != UserStatus.Active)
         {
             return new AuthResult(false, Error: "Account is not active");
         }

@@ -41,9 +41,9 @@ public class NotificationRepository : INotificationRepository
             $"""SELECT COUNT(*) FROM "Notifications" {whereClause}""", new { UserId = userId });
 
         var notifications = await connection.QueryAsync<NotificationDto>($"""
-            SELECT id, type, title, message, "ImageUrl", "ActionUrl",
+            SELECT "Id", "Type", "Title", "Message", "ImageUrl", "ActionUrl",
                    "ActionType", "ReferenceId", "ReferenceType",
-                   "IsRead", priority, "CreatedAt"
+                   "IsRead", "Priority", "CreatedAt"
             FROM "Notifications"
             {whereClause}
             ORDER BY "CreatedAt" DESC
@@ -65,7 +65,7 @@ public class NotificationRepository : INotificationRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         return await connection.ExecuteAsync(
-            """UPDATE "Notifications" SET "IsRead" = true, "UpdatedAt" = NOW() WHERE id = @Id AND "UserId" = @UserId""",
+            """UPDATE "Notifications" SET "IsRead" = true, "UpdatedAt" = NOW() WHERE "Id" = @Id AND "UserId" = @UserId""",
             new { Id = id, UserId = userId }) > 0;
     }
 
@@ -81,12 +81,14 @@ public class NotificationRepository : INotificationRepository
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         var id = Guid.NewGuid();
+        var typeInt = int.TryParse(type, out var parsedType) ? parsedType : 0;
+        Guid? referenceGuid = Guid.TryParse(referenceId, out var refId) ? refId : null;
         await connection.ExecuteAsync("""
-            INSERT INTO "Notifications" (id, "UserId", type, title, message, "ActionUrl", "ReferenceId",
-                                        "IsRead", "IsSent", priority, "CreatedAt", "IsDeleted")
-            VALUES (@Id, @UserId, @Type::integer, @Title, @Message, @ActionUrl, @ReferenceId,
+            INSERT INTO "Notifications" ("Id", "UserId", "Type", "Title", "Message", "ActionUrl", "ReferenceId",
+                "IsRead", "IsSent", "Priority", "CreatedAt", "IsDeleted")
+            VALUES (@Id, @UserId, @Type, @Title, @Message, @ActionUrl, @ReferenceId,
                    false, false, 2, NOW(), false)
-            """, new { Id = id, UserId = userId, Type = type, Title = title, Message = message, ActionUrl = actionUrl, ReferenceId = referenceId });
+            """, new { Id = id, UserId = userId, Type = typeInt, Title = title, Message = message, ActionUrl = actionUrl, ReferenceId = referenceGuid });
         return id;
     }
 }

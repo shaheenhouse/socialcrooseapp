@@ -193,22 +193,46 @@ export default function DashboardLayout({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [authHydrated, setAuthHydrated] = useState(() =>
+    typeof window !== "undefined" ? useAuthStore.persist.hasHydrated() : false
+  );
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const { user, logout, isAuthenticated } = useAuthStore();
+  const { user, logout, isAuthenticated, fetchUser } = useAuthStore();
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const unsub = useAuthStore.persist.onFinishHydration(() => {
+      setAuthHydrated(true);
+    });
+    if (useAuthStore.persist.hasHydrated()) {
+      setAuthHydrated(true);
+    }
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!authHydrated) return;
     if (!isAuthenticated) {
       router.push("/auth/login");
     }
-  }, [isAuthenticated, router]);
+  }, [authHydrated, isAuthenticated, router]);
 
   useEffect(() => {
     if (isAuthenticated) fetchUnreadCount();
   }, [isAuthenticated, fetchUnreadCount]);
+
+  useEffect(() => {
+    if (!authHydrated || !isAuthenticated) return;
+    if (!user) {
+      void fetchUser();
+    }
+  }, [authHydrated, isAuthenticated, user, fetchUser]);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -224,7 +248,7 @@ export default function DashboardLayout({
     setTheme(theme === "dark" ? "light" : "dark");
   }, [theme, setTheme]);
 
-  if (!mounted) return null;
+  if (!mounted || !authHydrated) return null;
 
   return (
     <SignalRProvider>

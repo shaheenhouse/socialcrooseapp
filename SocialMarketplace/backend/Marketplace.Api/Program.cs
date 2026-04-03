@@ -124,15 +124,17 @@ builder.Services.AddOpenTelemetry()
             .AddMeter("Marketplace.Core");
     });
 
-// SignalR Real-time services
+// SignalR Real-time services (Redis backplane optional — without Redis, single-server hubs work)
 var redisConn = builder.Configuration.GetConnectionString("Redis");
-builder.Services.AddRealtimeServices(redisConn);
+var useSignalRRedisBackplane = builder.Configuration.GetValue("SignalR:UseRedisBackplane", true);
+builder.Services.AddRealtimeServices(redisConn, useSignalRRedisBackplane);
 
 // Health checks (Redis is optional)
 var healthChecks = builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection") ?? "", name: "database");
 
-if (!string.IsNullOrWhiteSpace(redisConn))
+var redisEnabled = builder.Configuration.GetValue("Redis:Enabled", true);
+if (redisEnabled && !string.IsNullOrWhiteSpace(redisConn))
 {
     healthChecks.AddRedis(redisConn, name: "redis");
 }
@@ -275,10 +277,15 @@ internal sealed class BearerSecuritySchemeTransformer(
             [new OpenApiSecuritySchemeReference("Bearer", document)] = []
         };
 
-        foreach (var operation in document.Paths.Values.SelectMany(path => path.Operations))
+        foreach (var path in document.Paths.Values)
         {
-            operation.Value.Security ??= new List<OpenApiSecurityRequirement>();
-            operation.Value.Security.Add(securityRequirement);
+            if (path?.Operations is not { } operations) continue;
+            foreach (var operation in operations)
+            {
+                if (operation.Value is not { } op) continue;
+                op.Security ??= new List<OpenApiSecurityRequirement>();
+                op.Security.Add(securityRequirement);
+            }
         }
     }
 }

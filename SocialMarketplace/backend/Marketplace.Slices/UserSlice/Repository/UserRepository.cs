@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dapper;
 using Marketplace.Core.Infrastructure;
 using Marketplace.Slices.UserSlice.DTO;
@@ -30,7 +31,9 @@ public class UserRepository : IUserRepository
             WHERE "Id" = @Id AND "IsDeleted" = false
             """;
         
-        return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, new { Id = id });
+        var p = new DynamicParameters();
+        p.Add("Id", id);
+        return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, p);
     }
 
     public async Task<UserDto?> GetByEmailAsync(string email)
@@ -50,7 +53,9 @@ public class UserRepository : IUserRepository
             WHERE LOWER("Email") = LOWER(@Email) AND "IsDeleted" = false
             """;
         
-        return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, new { Email = email });
+        var p = new DynamicParameters();
+        p.Add("Email", email);
+        return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, p);
     }
 
     public async Task<UserDto?> GetByUsernameAsync(string username)
@@ -70,7 +75,9 @@ public class UserRepository : IUserRepository
             WHERE LOWER("Username") = LOWER(@Username) AND "IsDeleted" = false
             """;
         
-        return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, new { Username = username });
+        var p = new DynamicParameters();
+        p.Add("Username", username);
+        return await connection.QuerySingleOrDefaultAsync<UserDto>(sql, p);
     }
 
     public async Task<(IEnumerable<UserListDto> Users, int TotalCount)> GetAllAsync(int page, int pageSize, string? search = null, string? status = null)
@@ -88,7 +95,12 @@ public class UserRepository : IUserRepository
         }
 
         var countSql = $"SELECT COUNT(*) FROM users {whereClause}";
-        var totalCount = await connection.ExecuteScalarAsync<int>(countSql, new { Search = $"%{search}%", Status = status });
+        var listParams = new DynamicParameters();
+        listParams.Add("Search", string.IsNullOrEmpty(search) ? null : $"%{search}%");
+        listParams.Add("Status", status);
+        listParams.Add("PageSize", pageSize);
+        listParams.Add("Offset", (page - 1) * pageSize);
+        var totalCount = await connection.ExecuteScalarAsync<int>(countSql, listParams);
 
         var sql = $"""
             SELECT "Id", "Username", "FirstName", "LastName",
@@ -100,13 +112,7 @@ public class UserRepository : IUserRepository
             LIMIT @PageSize OFFSET @Offset
             """;
 
-        var users = await connection.QueryAsync<UserListDto>(sql, new
-        {
-            Search = $"%{search}%",
-            Status = status,
-            PageSize = pageSize,
-            Offset = (page - 1) * pageSize
-        });
+        var users = await connection.QueryAsync<UserListDto>(sql, listParams);
 
         return (users, totalCount);
     }
@@ -132,16 +138,15 @@ public class UserRepository : IUserRepository
             RETURNING "Id"
             """;
         
-        return await connection.ExecuteScalarAsync<Guid>(sql, new
-        {
-            Id = id,
-            dto.Email,
-            dto.Username,
-            PasswordHash = passwordHash,
-            dto.FirstName,
-            dto.LastName,
-            dto.PhoneNumber
-        });
+        var createParams = new DynamicParameters();
+        createParams.Add("Id", id);
+        createParams.Add("Email", dto.Email);
+        createParams.Add("Username", dto.Username);
+        createParams.Add("PasswordHash", passwordHash);
+        createParams.Add("FirstName", dto.FirstName);
+        createParams.Add("LastName", dto.LastName);
+        createParams.Add("PhoneNumber", dto.PhoneNumber);
+        return await connection.ExecuteScalarAsync<Guid>(sql, createParams);
     }
 
     public async Task<bool> UpdateAsync(Guid id, UpdateUserDto dto)
@@ -178,7 +183,9 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
         
         const string sql = """UPDATE users SET "IsDeleted" = true, "DeletedAt" = NOW() WHERE "Id" = @Id""";
-        var rowsAffected = await connection.ExecuteAsync(sql, new { Id = id });
+        var delParams = new DynamicParameters();
+        delParams.Add("Id", id);
+        var rowsAffected = await connection.ExecuteAsync(sql, delParams);
         return rowsAffected > 0;
     }
 
@@ -191,7 +198,10 @@ public class UserRepository : IUserRepository
             SET "LastLoginAt" = NOW(), "LastLoginIp" = @IpAddress, "FailedLoginAttempts" = 0
             WHERE "Id" = @Id
             """;
-        var rowsAffected = await connection.ExecuteAsync(sql, new { Id = id, IpAddress = ipAddress });
+        var loginParams = new DynamicParameters();
+        loginParams.Add("Id", id);
+        loginParams.Add("IpAddress", ipAddress);
+        var rowsAffected = await connection.ExecuteAsync(sql, loginParams);
         return rowsAffected > 0;
     }
 
@@ -200,7 +210,9 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
         const string sql = """SELECT "PasswordHash" FROM users WHERE "Id" = @Id AND "IsDeleted" = false""";
-        return await connection.ExecuteScalarAsync<string?>(sql, new { Id = id });
+        var hashParams = new DynamicParameters();
+        hashParams.Add("Id", id);
+        return await connection.ExecuteScalarAsync<string?>(sql, hashParams);
     }
 
     public async Task<bool> EmailExistsAsync(string email)
@@ -208,7 +220,9 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
         const string sql = """SELECT EXISTS(SELECT 1 FROM users WHERE LOWER("Email") = LOWER(@Email) AND "IsDeleted" = false)""";
-        return await connection.ExecuteScalarAsync<bool>(sql, new { Email = email });
+        var emailParams = new DynamicParameters();
+        emailParams.Add("Email", email);
+        return await connection.ExecuteScalarAsync<bool>(sql, emailParams);
     }
 
     public async Task<bool> UsernameExistsAsync(string username)
@@ -216,7 +230,9 @@ public class UserRepository : IUserRepository
         using var connection = await _connectionFactory.CreateReadConnectionAsync();
         
         const string sql = """SELECT EXISTS(SELECT 1 FROM users WHERE LOWER("Username") = LOWER(@Username) AND "IsDeleted" = false)""";
-        return await connection.ExecuteScalarAsync<bool>(sql, new { Username = username });
+        var userParams = new DynamicParameters();
+        userParams.Add("Username", username);
+        return await connection.ExecuteScalarAsync<bool>(sql, userParams);
     }
 
     public async Task<UserProfileDto?> GetProfileAsync(Guid userId)
@@ -233,7 +249,9 @@ public class UserRepository : IUserRepository
             WHERE "UserId" = @UserId AND "IsDeleted" = false
             """;
         
-        return await connection.QuerySingleOrDefaultAsync<UserProfileDto>(sql, new { UserId = userId });
+        var profileParams = new DynamicParameters();
+        profileParams.Add("UserId", userId);
+        return await connection.QuerySingleOrDefaultAsync<UserProfileDto>(sql, profileParams);
     }
 
     public async Task<bool> UpdateProfileAsync(Guid userId, UpdateProfileDto dto)
@@ -264,21 +282,20 @@ public class UserRepository : IUserRepository
                 "UpdatedAt" = NOW()
             """;
         
-        var rowsAffected = await connection.ExecuteAsync(sql, new
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            dto.CompanyName,
-            dto.Website,
-            dto.LinkedInUrl,
-            dto.GitHubUrl,
-            dto.PortfolioUrl,
-            dto.Headline,
-            dto.About,
-            dto.YearsOfExperience,
-            dto.HourlyRate,
-            dto.AvailableForHire
-        });
+        var upsertParams = new DynamicParameters();
+        upsertParams.Add("Id", Guid.NewGuid());
+        upsertParams.Add("UserId", userId);
+        upsertParams.Add("CompanyName", dto.CompanyName);
+        upsertParams.Add("Website", dto.Website);
+        upsertParams.Add("LinkedInUrl", dto.LinkedInUrl);
+        upsertParams.Add("GitHubUrl", dto.GitHubUrl);
+        upsertParams.Add("PortfolioUrl", dto.PortfolioUrl);
+        upsertParams.Add("Headline", dto.Headline);
+        upsertParams.Add("About", dto.About);
+        upsertParams.Add("YearsOfExperience", dto.YearsOfExperience);
+        upsertParams.Add("HourlyRate", dto.HourlyRate);
+        upsertParams.Add("AvailableForHire", dto.AvailableForHire);
+        var rowsAffected = await connection.ExecuteAsync(sql, upsertParams);
         
         return rowsAffected > 0;
     }
@@ -298,13 +315,16 @@ public class UserRepository : IUserRepository
             ORDER BY us."IsPrimary" DESC, us."EndorsementCount" DESC
             """;
         
-        return await connection.QueryAsync<UserSkillDto>(sql, new { UserId = userId });
+        var skillsReadParams = new DynamicParameters();
+        skillsReadParams.Add("UserId", userId);
+        return await connection.QueryAsync<UserSkillDto>(sql, skillsReadParams);
     }
 
     public async Task<bool> AddUserSkillAsync(Guid userId, Guid skillId, string level, int yearsOfExperience)
     {
         using var connection = await _connectionFactory.CreateWriteConnectionAsync();
-        
+        var levelValue = ParseSkillLevel(level);
+
         const string sql = """
             INSERT INTO user_skills ("Id", "UserId", "SkillId", "Level", "YearsOfExperience",
                                     "VerificationStatus", "IsPrimary", "IsEndorsed", "EndorsementCount",
@@ -318,16 +338,34 @@ public class UserRepository : IUserRepository
                 "UpdatedAt" = NOW()
             """;
         
-        var rowsAffected = await connection.ExecuteAsync(sql, new
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            SkillId = skillId,
-            Level = level,
-            YearsOfExperience = yearsOfExperience
-        });
+        var addSkillParams = new DynamicParameters();
+        addSkillParams.Add("Id", Guid.NewGuid());
+        addSkillParams.Add("UserId", userId);
+        addSkillParams.Add("SkillId", skillId);
+        addSkillParams.Add("Level", levelValue);
+        addSkillParams.Add("YearsOfExperience", yearsOfExperience);
+        var rowsAffected = await connection.ExecuteAsync(sql, addSkillParams);
         
         return rowsAffected > 0;
+    }
+
+    /// <summary>Maps API input to <c>user_skills.Level</c> (integer per schema).</summary>
+    private static int ParseSkillLevel(string level)
+    {
+        if (string.IsNullOrWhiteSpace(level))
+            return 1;
+        var trimmed = level.Trim();
+        if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
+            return Math.Clamp(n, 1, 5);
+        return trimmed.ToLowerInvariant() switch
+        {
+            "beginner" => 1,
+            "intermediate" => 2,
+            "advanced" => 3,
+            "expert" => 4,
+            "master" => 5,
+            _ => 1
+        };
     }
 
     public async Task<bool> RemoveUserSkillAsync(Guid userId, Guid skillId)
@@ -340,7 +378,10 @@ public class UserRepository : IUserRepository
             WHERE "UserId" = @UserId AND "SkillId" = @SkillId
             """;
         
-        var rowsAffected = await connection.ExecuteAsync(sql, new { UserId = userId, SkillId = skillId });
+        var removeSkillParams = new DynamicParameters();
+        removeSkillParams.Add("UserId", userId);
+        removeSkillParams.Add("SkillId", skillId);
+        var rowsAffected = await connection.ExecuteAsync(sql, removeSkillParams);
         return rowsAffected > 0;
     }
 
@@ -359,7 +400,9 @@ public class UserRepository : IUserRepository
             ORDER BY r."Priority" DESC
             """;
         
-        return await connection.QueryAsync<string>(sql, new { UserId = userId });
+        var rolesParams = new DynamicParameters();
+        rolesParams.Add("UserId", userId);
+        return await connection.QueryAsync<string>(sql, rolesParams);
     }
 
     public async Task<bool> AssignDefaultRoleAsync(Guid userId)
@@ -374,7 +417,10 @@ public class UserRepository : IUserRepository
             ON CONFLICT DO NOTHING
             """;
         
-        var rowsAffected = await connection.ExecuteAsync(sql, new { NewId = Guid.NewGuid(), UserId = userId });
+        var roleInsertParams = new DynamicParameters();
+        roleInsertParams.Add("NewId", Guid.NewGuid());
+        roleInsertParams.Add("UserId", userId);
+        var rowsAffected = await connection.ExecuteAsync(sql, roleInsertParams);
         return rowsAffected > 0;
     }
 }

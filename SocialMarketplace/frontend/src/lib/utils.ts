@@ -65,3 +65,16 @@ export function slugify(str: string) {
 export function generateId() {
   return Math.random().toString(36).substring(2, 9);
 }
+
+/** Normalize list payloads: `{ data: T[] }`, `{ items: T[] }`, or a bare array from axios `response.data`. */
+export function listFromApiResponse<T>(axiosResponse: { data?: unknown } | undefined): T[] {
+  const body = axiosResponse?.data;
+  if (body == null) return [];
+  if (Array.isArray(body)) return body as T[];
+  if (typeof body === 'object') {
+    const o = body as { data?: unknown; items?: unknown };
+    if (Array.isArray(o.data)) return o.data as T[];
+    if (Array.isArray(o.items)) return o.items as T[];
+  }
+  return [];
+}

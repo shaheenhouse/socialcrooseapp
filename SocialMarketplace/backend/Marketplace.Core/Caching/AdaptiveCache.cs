@@ -9,7 +9,7 @@ namespace Marketplace.Core.Caching;
 public sealed class AdaptiveCache : IAdaptiveCache
 {
     private readonly IMemoryCache _l1Cache;
-    private readonly IConnectionMultiplexer _redis;
+    private readonly IConnectionMultiplexer? _redis;
     private readonly ILogger<AdaptiveCache> _logger;
     private readonly TimeSpan _defaultExpiration;
     private readonly TimeSpan _l1Expiration;
@@ -17,7 +17,7 @@ public sealed class AdaptiveCache : IAdaptiveCache
 
     public AdaptiveCache(
         IMemoryCache l1Cache,
-        IConnectionMultiplexer redis,
+        IConnectionMultiplexer? redis,
         IConfiguration configuration,
         ILogger<AdaptiveCache> logger)
     {
@@ -42,6 +42,8 @@ public sealed class AdaptiveCache : IAdaptiveCache
         }
 
         // Try L2 (Redis) cache
+        if (_redis is null) return null;
+
         try
         {
             var db = _redis.GetDatabase();
@@ -75,6 +77,8 @@ public sealed class AdaptiveCache : IAdaptiveCache
         _l1Cache.Set(key, value, _l1Expiration);
 
         // Set in L2 cache
+        if (_redis is null) return;
+
         try
         {
             var db = _redis.GetDatabase();
@@ -90,6 +94,8 @@ public sealed class AdaptiveCache : IAdaptiveCache
     {
         _l1Cache.Remove(key);
 
+        if (_redis is null) return;
+
         try
         {
             var db = _redis.GetDatabase();
@@ -103,6 +109,12 @@ public sealed class AdaptiveCache : IAdaptiveCache
 
     public async Task RemoveByPrefixAsync(string prefix)
     {
+        if (_redis is null)
+        {
+            _logger.LogDebug("RemoveByPrefixAsync skipped for {Prefix} (Redis disabled)", prefix);
+            return;
+        }
+
         try
         {
             var endpoints = _redis.GetEndPoints();
