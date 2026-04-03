@@ -1,0 +1,37 @@
+# Build output
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+
+# Logs
+**/logs/
+*.log
+
+# Environment / secrets (never bake into image)
+**/.env
+**/.env.*
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# Test projects (not needed in production image)
+**/*Tests*/
+**/*Test*/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docs
+*.md
+docs/
+
+# Docker metadata
+.dockerignore
+docker-compose*.yml
+railway.toml
